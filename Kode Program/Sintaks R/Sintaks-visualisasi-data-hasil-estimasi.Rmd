@@ -1,0 +1,246 @@
+---
+title: "VISUALISASI_DATA_SKRIPSI"
+author: "Raflizal Fikrar Odriansyah"
+date: '2023-02-01'
+output: html_document
+---
+
+# Load Library
+```{r message=FALSE, warning=FALSE}
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(readxl)
+library(reshape2)
+library(ggpubr)
+```
+
+# Load data
+```{r}
+result_lengkap <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/perbandingan_hasil_model_REVISI.xlsx", sheet = 1)
+
+result_pend_lgsg <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/perbandingan_hasil_model_REVISI.xlsx", sheet = 2)
+
+result_pend_eblupfh <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/perbandingan_hasil_model_REVISI.xlsx", sheet = 3)
+
+result_pend_seblupfh <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/perbandingan_hasil_model_REVISI.xlsx", sheet = 4)
+
+result_pend_hb <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/perbandingan_hasil_model_REVISI.xlsx", sheet = 5)
+
+pend <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/perbandingan_hasil_model_REVISI.xlsx", sheet = 6)
+```
+
+# Korelasi antara ketiga penduga model SAE dengan penduga langsung
+```{r}
+cor.test(result_pend_lgsg$PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA, result_pend_eblupfh$Penduga_EBLUP_FH, method="kendall")
+
+cor.test(result_pend_lgsg$PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA, result_pend_seblupfh$Penduga_SEBLUP_FH, method="kendall")
+
+cor.test(result_pend_lgsg$PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA, result_pend_hb$PENDUGA_HB8, method="kendall")
+```
+
+# Korelasi antara empat model pendugaan dengan data PLN sebagai nilai populasi
+```{r}
+cor.test(result_lengkap$DATA_PLN, result_lengkap$PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA, method="kendall")
+
+cor.test(result_lengkap$DATA_PLN, result_lengkap$PENDUGA_EBLUP_FH, method="kendall")
+
+cor.test(result_lengkap$DATA_PLN, result_lengkap$PENDUGA_SEBLUP_FH, method="kendall")
+
+cor.test(result_lengkap$DATA_PLN, result_lengkap$PENDUGA_HB8, method="kendall")
+```
+
+# Dot plot nilai RSE atau RRMSE
+## Penduga langsung
+```{r}
+result_pend_lgsg$KATEG_NILAI_RSE <- as.factor(result_pend_lgsg$KATEG_NILAI_RSE)
+
+boolColors <- as.character(c("blue", "red", "black"))
+boolScale <- scale_colour_manual(name="KATEG_NILAI_RSE", values=boolColors)
+ggplot(result_pend_lgsg, aes(x = No, y=RSE_PENDUGA_LANGSUNG, color=KATEG_NILAI_RSE)) +
+  geom_point(size=1.4) +
+  xlab("Nomor Kecamatan") +
+  ylab("RSE Penduga Langsung (%)") +
+  theme_classic() +
+  boolScale
+```
+
+## Penduga EBLUP-FH
+```{r}
+result_pend_eblupfh$KATEG_NILAI_RRMSE <- as.factor(result_pend_eblupfh$KATEG_NILAI_RRMSE)
+
+boolColors <- as.character(c("blue", "red"))
+boolScale <- scale_colour_manual(name="KATEG_NILAI_RRMSE", values=boolColors)
+ggplot(result_pend_eblupfh, aes(x = No, y=RRMSE_EBLUP_FH, color=KATEG_NILAI_RRMSE)) +
+  geom_point(size=1.4) +
+  xlab("Nomor Kecamatan") +
+  ylab("RRMSE Penduga EBLUP-FH (%)") +
+  theme_classic() +
+  boolScale
+```
+
+## Penduga SEBLUP-FH
+```{r}
+result_pend_seblupfh$KATEG_NILAI_RRMSE <- as.factor(result_pend_seblupfh$KATEG_NILAI_RRMSE)
+
+boolColors <- as.character(c("blue", "red"))
+boolScale <- scale_colour_manual(name="KATEG_NILAI_RRMSE", values=boolColors)
+ggplot(result_pend_seblupfh, aes(x = No, y=RRMSE_SEBLUP_FH, color=KATEG_NILAI_RRMSE)) +
+  geom_point(size=1.4) +
+  xlab("Nomor_Urut_Kecamatan") +
+  ylab("RRMSE Penduga SEBLUP-FH (%)") +
+  theme_classic() +
+  boolScale
+```
+
+## Penduga HB Lognormal
+```{r}
+result_pend_hb$KATEG_NILAI_RRMSE <- as.factor(result_pend_hb$KATEG_NILAI_RRMSE)
+
+boolColors <- as.character(c("blue", "red"))
+boolScale <- scale_colour_manual(name="KATEG_NILAI_RRMSE", values=boolColors)
+ggplot(result_pend_hb, aes(x = No, y=RRMSE_HB8, color=KATEG_NILAI_RRMSE)) +
+  geom_point(size=1.4) +
+  xlab("Nomor Kecamatan") +
+  ylab("RRMSE Penduga HB Lognormal (%)") +
+  theme_classic() +
+  boolScale
+```
+
+# Box plot perbandingan hasil estimasi
+```{r}
+pend$Model <- as.factor(pend$Model)
+ggplot(pend, aes(x = Model, y = Nilai_Estimasi, color = Model, fill = Model)) +  # ggplot function
+  geom_boxplot() +
+  scale_y_continuous(name = "Nilai") +  # Continuous variable label
+  scale_x_discrete(name = "Evaluasi Metrik") +      # Group label
+  # Plot title
+  theme(axis.line = element_line(colour = "black", # Theme customization
+                                 size = 0.25))
+
+# Boxplot from dataframe
+ggplot(data = pend, aes(x = Model, y = Nilai_Estimasi, fill = Model)) +
+       stat_boxplot(geom = "errorbar", # Boxplot with error bars
+                    width = 0.2) +
+       geom_boxplot(alpha = 0.9, outlier.colour = "black") +
+       scale_y_continuous(name = "Nilai KWh/kapita ruta") +  # Continuous variable label
+       scale_x_discrete(name = "Model Penduga") +      # Group label
+       # Plot title
+       theme(axis.line = element_line(colour = "black", # Theme customization
+                                      size = 0.25))
+```
+
+# Scatter plot perbandingan hasil estimasi
+## Nilai penduga langsung dan data PLN
+```{r}
+# Basic scatter plot
+ggplot(result_lengkap, aes(x=PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA, y=DATA_PLN)) +
+  geom_point(size=1, shape=18) +
+  geom_smooth(method=lm, color="darkred", fill="blue", fullrange = TRUE)+
+  labs(title="Scatter Plot Nilai Penduga Langsung dan Data PLN",
+       x="Penduga Langsung", y = "Data PLN") + 
+  theme_classic() +
+  stat_cor(method = "kendall", cor.coef.name="rho", digits = 3)
+```
+
+## Nilai penduga EBLUP-FH dan data PLN
+```{r}
+ggplot(result_lengkap, aes(x=PENDUGA_EBLUP_FH, y=DATA_PLN)) +
+  geom_point(size=1, shape=18) +
+  geom_smooth(method=lm, color="darkred", fill="blue", fullrange = TRUE)+
+  labs(title="Scatter Plot Nilai Penduga EBLUP-FH dan Data PLN",
+       x="Penduga EBLUP-FH", y = "Data PLN") + 
+  theme_classic() +
+  stat_cor(method = "kendall", cor.coef.name="rho", digits = 3)
+```
+
+# Nilai penduga SEBLUP-FH dan data PLN
+```{r}
+ggplot(result_lengkap, aes(x=PENDUGA_SEBLUP_FH, y=DATA_PLN)) +
+  geom_point(size=1, shape=18) +
+  geom_smooth(method=lm, color="darkred", fill="blue", fullrange = TRUE)+
+  labs(title="Scatter Plot Nilai Penduga SEBLUP-FH dan Data PLN",
+       x="Penduga SEBLUP-FH", y = "Data PLN") + 
+  theme_classic() +
+  stat_cor(method = "kendall", cor.coef.name="rho", digits = 3)
+```
+
+# Nilai penduga HB Lognormal dan data PLN
+```{r}
+result_lengkap <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/perbandingan_hasil_model_REVISI.xlsx", sheet = 1)
+# Basic scatter plot
+ggplot(result_lengkap, aes(x=PENDUGA_HB8, y=DATA_PLN)) +
+  geom_point(size=1, shape=18) +
+  geom_smooth(method=lm, color="darkred", fill="blue", fullrange = TRUE)+
+  labs(title="Scatter Plot Antara Nilai Penduga HB Lognormal dan Data PLN",
+       x="Penduga HB Lognormal", y = "Data PLN") + 
+  theme_classic() +
+  stat_cor(method = "kendall", cor.coef.name="rho", digits = 3)
+
+cor.test(result_lengkap$PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA, result_lengkap$PENDUGA_SEBLUP_FH, method = "kendall")
+```
+
+# Box plot perbandingan nilai MSE
+```{r}
+eval_pend <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/perbandingan_hasil_model_REVISI.xlsx", sheet = 7)
+eval_pend$Model_Pendugaan <- as.factor(eval_pend$Model_Pendugaan)
+
+# Boxplot from dataframe
+myColors <- ifelse(levels(eval_pend$Model_Pendugaan) == "EBLUP_FH", "yellow",
+                   ifelse(levels(eval_pend$Model_Pendugaan) == "SEBLUP_FH", "green",
+                          ifelse(levels(eval_pend$Model_Pendugaan) == "HB_LOGNORMAL","blue", "red")))
+
+data_mse_rse <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/perbandingan_hasil_model_REVISI.xlsx", sheet = 7)
+data_mse_sae = data_mse_rse[566:2260,]
+data_mse_sae$Model_Pendugaan <- as.factor(data_mse_sae$Model_Pendugaan)
+ggplot(data_mse_sae, aes(x = Model_Pendugaan, y = MSE, fill = Model_Pendugaan)) +
+       stat_boxplot(geom = "errorbar", # Boxplot with error bars
+                    width = 0.2) +
+       geom_boxplot(alpha = 0.9, outlier.colour = "black") +
+       scale_y_continuous(name = "Mean Square Error (MSE)") +  # Continuous variable label
+       scale_x_discrete(name = "Model Penduga SAE") +      # Group label
+       # Plot title
+       theme(axis.line = element_line(colour = "black", # Theme customization
+                                      size = 0.25)) +
+       scale_fill_manual(values = c("#E4F651", "#4467D4", "#69F44D"))
+
+```
+
+# Box plot perbandingan nilai RSE atau RRMSE
+```{r}
+eval_pend <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/perbandingan_hasil_model_REVISI.xlsx", sheet = 7)
+eval_pend$Model_Pendugaan <- as.factor(eval_pend$Model_Pendugaan)
+
+data_rse_sae <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/perbandingan_hasil_model_REVISI.xlsx", sheet = 7)
+
+# Boxplot from dataframe
+ggplot(data_rse_sae, aes(x = Model_Pendugaan, y = RSE, fill = Model_Pendugaan)) +
+       stat_boxplot(geom = "errorbar", # Boxplot with error bars
+                    width = 0.2) +
+       geom_boxplot(alpha = 0.9, outlier.colour = "black") +
+       scale_y_continuous(name = "RSE atau RRMSE (%)") +  # Continuous variable label
+       scale_x_discrete(name = "Model Pendugaan") +      # Group label
+       # Plot title
+       theme(axis.line = element_line(colour = "black", # Theme customization
+                                      size = 0.25)) +
+       scale_fill_manual(values = c("#E4F651", "#4467D4", "#69F44D", "pink"))
+```
+
+```{r}
+eval_pend <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/perbandingan_hasil_model_REVISI.xlsx", sheet = 7)
+eval_pend$Model_Pendugaan <- as.factor(eval_pend$Model_Pendugaan)
+
+# Boxplot from dataframe
+ggplot(data_mse_sae, aes(x = Model_Pendugaan, y = RSE, fill = Model_Pendugaan)) +
+       stat_boxplot(geom = "errorbar", # Boxplot with error bars
+                    width = 0.2) +
+       geom_boxplot(alpha = 0.9, outlier.colour = "black") +
+       scale_y_continuous(name = "RSE atau RRMSE (%)") +  # Continuous variable label
+       scale_x_discrete(name = "Model Penduga SAE") +      # Group label
+       # Plot title
+       theme(axis.line = element_line(colour = "black", # Theme customization
+                                      size = 0.25)) +
+       scale_fill_manual(values = c("#E4F651", "#4467D4", "#69F44D"))
+```
+```
+

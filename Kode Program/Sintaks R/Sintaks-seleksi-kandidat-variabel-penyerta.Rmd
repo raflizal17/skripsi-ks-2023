@@ -1,0 +1,78 @@
+---
+title: "Sintaks Seleksi Kandidat Variabel Penyerta"
+author: "Raflizal Fikrar Odriansyah"
+date: "2023-06-25"
+output: html_document
+---
+
+# Import library
+```{r}
+library(REdaS)
+library(stats)
+library(ggplot2)
+library(ggfortify)
+```
+
+# Load data
+```{r}
+dataset <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/dataset_skripsi_revisi.xlsx", sheet = 1)
+# Check missing data
+sapply(dataset, function(x) sum(is.na(dataset)))
+str(dataset)
+# Filter variabel
+data_x <- dataset[, -c(1,2,3,4)]
+data_y <- dataset[, 4]
+# Analisis Deskriptif
+summary(data_x)
+summary(data_y)
+```
+
+
+```{r}
+# Uji korelasi kendall-tau penduga langsung dengan setiap kandidat var. penyerta
+for(i in 1:ncol(data_x)){
+  korelasi <- cor(data_x[, i], data_y, method = "kendall")
+  print(paste("Korelasi antara ", colnames(data_x[, i]), "dengan ", colnames(data_y), "adalah ", korelasi))
+}
+cor.test(data_x$ntl_median, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$bui_median, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$lst_median, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$elevation_median, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$co_median, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$pm2.5_median, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$aridity_index_median, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$rwi_weighted, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$jlh_klg_listrik_pln, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$jlh_fas_pddk, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$jlh_fas_ksht, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$jlh_imk, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$jlh_sentra_industri, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$jlh_sarana_eko, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$jlh_tmpt_ibdh, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+cor.test(data_x$kepadatan_penduduk, data_y$PEND_LGSG, method = "kendall", exact = FALSE)
+```
+
+# Pemeriksaan multikolinearitas dengan VIF
+```{r}
+model <- lm(data_y$PEND_LGSG ~data_x$ntl_median+data_x$lst_median+data_x$bui_median+data_x$co_median+data_x$pm2.5_median+data_x$elevation_median+data_x$aridity_index_median+data_x$rwi_weighted+data_x$jlh_klg_listrik_pln+data_x$jlh_fas_pddk+data_x$jlh_fas_ksht+data_x$jlh_sarana_eko+data_x$jlh_tmpt_ibdh+data_x$kepadatan_penduduk)
+summary(model)
+vif(model)
+```
+
+# Backward Elimination dan Uji Keberartian Model dengan Partial-t
+```{r}
+# Full model 13 kandidat variabel penyerta
+M1 <- lm(data_y$PEND_LGSG ~data_x$ntl_median+data_x$bui_median+data_x$co_median+data_x$pm2.5_median+data_x$elevation_median+data_x$aridity_index_median+data_x$rwi_weighted+data_x$jlh_klg_listrik_pln+data_x$jlh_fas_pddk+data_x$jlh_fas_ksht+data_x$jlh_sarana_eko+data_x$jlh_tmpt_ibdh+data_x$kepadatan_penduduk, data = dataset)
+# null model
+M0 <- lm(data_y$PEND_LGSG ~1, data = dataset)
+# Backward Elimination
+seleksi_model_aic <- step(M1, scope = list(lower = M0, upper = M1), direction = "backward", k = 2)
+autoplot(lm(formula = data_y$PEND_LGSG ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_fas_pddk + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh + data_x$kepadatan_penduduk, data = dataset))
+vif(seleksi_model_aic) # cek multikolinearitas setelah backward elimination
+# Ekstrak nilai AIC
+seleksi_model_aic$anova$AIC
+# Hasil pengujian keberartian model dengan uji parsial t
+summary(seleksi_model_aic)
+?step()
+```
+

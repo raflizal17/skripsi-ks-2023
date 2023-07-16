@@ -1,0 +1,70 @@
+---
+title: "Sintaks-pendugaan-SAE-EBLUPFH"
+author: "Raflizal Fikrar Odriansyah"
+date: "2023-06-25"
+output: html_document
+---
+
+# Import library
+```{r}
+library(sae)
+library(readxl)
+```
+
+# Load data
+```{r}
+# Import data variabel penyerta dan hasil estimasi langsung
+dataset <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/dataset_skripsi_revisi.xlsx", sheet = 1)
+hasil_est_lgsg <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/dataset_skripsi_revisi.xlsx", sheet = 2)
+data_x <- dataset[, -c(1,2,3,4)]
+```
+
+# Estimasi tak langsung dengan model SAE EBLUP-FH 
+```{r}
+# Model EBLUP-FH 1 (8 variabel penyerta dari hasil backward elimination)
+model_eblup_fh1 <- eblupFH(hasil_est_lgsg$Konsumsi_Listrik_Kapita ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_fas_pddk + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh + data_x$kepadatan_penduduk, vardir = hasil_est_lgsg$Var, method = "REML")
+# Model EBLUP-FH 2 (kepadatan penduduk diexclude)
+model_eblup_fh2 <- eblupFH(hasil_est_lgsg$Konsumsi_Listrik_Kapita ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_fas_pddk + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, vardir = hasil_est_lgsg$Var, method = "REML")
+# Model EBLUP-FH 3 (fasilitas pendidikan diexclude)
+model_eblup_fh3 <- eblupFH(hasil_est_lgsg$Konsumsi_Listrik_Kapita ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh + data_x$kepadatan_penduduk, vardir = hasil_est_lgsg$Var, method = "REML")
+# Model EBLUP-FH 4 (kepadatan penduduk dan fasilitas pendidikan diexclude)
+model_eblup_fh4 <- eblupFH(hasil_est_lgsg$Konsumsi_Listrik_Kapita ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, vardir = hasil_est_lgsg$Var, method = "REML")
+# Fit model EBLUP-FH
+model_eblup_fh1$fit
+model_eblup_fh2$fit
+model_eblup_fh3$fit
+model_eblup_fh4$fit # model yang dipilih
+```
+
+# Ekstrak hasil estimasi model
+```{r}
+# Ekstrak hasil estimasi model EBLUP-FH
+y_eblup <- model_eblup_fh4$eblup
+# Ekstrak koefisien ragam pengaruh acak
+var_rand_eblup <- model_eblup_fh4$fit$refvar
+# Ekstrak nilai random effect area
+jlh_baris <- nrow(dataset)
+var_x <- matrix(c(data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh), nrow=jlh_baris, ncol=6)
+beta <- matrix(model_eblup_fh4$fit$estcoef$beta, ncol = 1)
+beta_no_intercept <- matrix(beta[-1,], ncol = 1)
+gama <- model_eblup_fh4$fit$refvar/(model_eblup_fh4$fit$refvar+hasil_est_lgsg$Var)
+y_mat <- matrix(hasil_est_lgsg$Konsumsi_Listrik_Kapita, ncol = 1)
+rand_effect_eblup <- gama*(y_mat-var_x%*%beta_no_intercept)
+# Ekstrak nilai residual
+res_y_eblup <- hasil_est_lgsg$Konsumsi_Listrik_Kapita - y_eblup
+# Uji normalitas random effect area dan residual
+ks.test(rand_effect_eblup, "pnorm", mean(rand_effect_eblup), sd(rand_effect_eblup))
+ks.test(res_y_eblup, "pnorm", mean(res_y_eblup), sd(res_y_eblup))
+# Ekstrak nilai MSE dan RRMSE model EBLUP-FH
+mse_eblup <- mseFH(hasil_est_lgsg$Konsumsi_Listrik_Kapita ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, hasil_est_lgsg$Var, method="REML")
+mse_fh <- mse_eblup$mse
+rrmse_fh <- (sqrt(mse_fh)/y_eblup)*100
+```
+
+# Ekspor hasil estimasi ke penyimpanan lokal
+```{r}
+data_est_eblupFH <- cbind(hasil_est_lgsg[,c(1,2,3)], y_eblup, mse_fh, rrmse_fh)
+names(data_est_eblupFH) <- c("No", "KodeKec", "NamaKec", "Penduga_EBLUP_FH", "MSE_EBLUP_FH","RRMSE_EBLUP_FH")
+write.csv(data_est_eblupFH,"E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Estimasi_EBLUP_FH_MODEL.csv")
+```
+

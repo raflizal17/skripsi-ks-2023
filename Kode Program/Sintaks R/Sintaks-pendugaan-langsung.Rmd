@@ -1,0 +1,57 @@
+---
+title: "Sintaks Pendugaan Langsung"
+author: "Raflizal Fikrar Odriansyah"
+date: "2023-06-25"
+output: html_document
+---
+
+# Import library
+```{r}
+library(survey)
+library(readxl)
+library(dplyr)
+```
+
+# Load data
+```{r}
+listrik_jateng <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/SUSENAS/Konsumsi_Listrik_Ruta_Jateng_Susenas_2021.xlsx")
+# Retype variables
+listrik_jateng$KodeProv <- as.factor(listrik_jateng$KodeProv)
+listrik_jateng$KodeKabKot <- as.factor(listrik_jateng$KodeKabKot)
+listrik_jateng$KodeKec <- as.factor(listrik_jateng$KodeKec)
+listrik_jateng$KlasWil <- as.factor(listrik_jateng$KlasWil)
+listrik_jateng$KodeSampel <- as.factor(listrik_jateng$KodeSampel)
+listrik_jateng$idkec <- as.factor(listrik_jateng$idkec)
+# Check missing data from each variable
+sapply(listrik_jateng, function(x) sum(is.na(listrik_jateng)))
+# Cek jumlah sampel tiap kecamatan
+table(listrik_jateng$KodeProv, listrik_jateng$idkec)
+```
+
+# Estimasi langsung
+```{r}
+# Mengatur sampel PSU yang terisolasi dengan metode penyesuaian
+options(survey.lonely.psu="adjust")
+# Desain survei SUSENAS
+susenas.design.jateng <- svydesign(ids = ~PSU+SSU, strata = ~KlasWil, data=listrik_jateng, weights = ~WEIND)
+summary(susenas.design.jateng)
+# Menghitung hasil estimasi
+hasil <- svyby(formula= ~KONSUMSI_LISTRIK_KAPITA, ~idkec, design=susenas.design.jateng, deff=TRUE, svymean, vartype = c("se", "ci", "ci", "cv", "cvpct", "var"))
+y_est_lgsg <- hasil$KONSUMSI_LISTRIK_KAPITA
+var_est_lgsg <- hasil$var
+se_est_lgsg <- hasil$se
+ci_lower_est_lgsg <- hasil$ci_l
+ci_upper_est_lgsg <- hasil$ci_u
+deff_est_lgsg <- hasil$DEff.KONSUMSI_LISTRIK_KAPITA
+rse_est_lgsg <- hasil$`cv%`
+mse_est_lgsg <- hasil$var # MSE=VAR karena bias penduga langsung dianggap = 0
+```
+
+Ekspor hasil estimasi langsung ke penyimpanan lokal
+```{r}
+temp <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/data_estimasi_langsung.xlsx")
+data_est_lgsg <- data.frame(temp$KodeKecamatan, temp$NamaKecamatan, y_est_lgsg, var_est_lgsg, se_est_lgsg, ci_lower_est_lgsg, ci_upper_est_lgsg, deff_est_lgsg, rse_est_lgsg, mse_est_lgsg)
+names(data_est_lgsg) <- c("KodeKec", "NamaKec", "Konsumsi_Listrik_Kapita", "Var", "SE", "CI_Lower", "CI_Upper", "DEFF", "RSE", "MSE")
+write.csv(data_est_lgsg, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/SUSENAS/Hasil_Estimasi_Langsung.csv")
+```
+

@@ -1,0 +1,219 @@
+---
+title: "uji_autokorelasi_spasial"
+author: "Raflizal Fikrar Odriansyah"
+date: '2023-02-01'
+output: html_document
+---
+
+# Load Library
+
+```{r message=FALSE, warning=FALSE}
+library(spdep)
+library(tidyverse)
+library(readr)
+library(readxl)
+library(car)
+library(sf)
+library(stplanr)
+library(terra)
+library(tmap)
+library(leaflet)
+library(tseries)
+library(dplyr)
+library(sfweight) 
+library(ggplot2)
+library(rgdal)
+```
+
+# Load data
+```{r}
+dataset <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/dataset_skripsi_revisi.xlsx")
+
+# Check missing data
+sapply(dataset, function(x) sum(is.na(dataset)))
+str(dataset)
+# Filter variabel
+data_x <- dataset[, -c(1,2,3,4)]
+data_y <- dataset[, 4]
+
+# Analisis Deskriptif
+summary(data_x)
+summary(data_y)
+```
+
+# Uji Moran's I
+```{r}
+# moran.test
+W <- read.gal("E:/GEOJSON/QC_MAT.gal", override.id=TRUE)
+w <- nb2listw(W, glist=NULL, style="W", zero.policy=NULL)
+# write.nb.gal(w$neighbours, "E:/GEOJSON/queen_cont.gal")
+Y <- dataset$PEND_LGSG
+result_moran <- moran.test(Y, w, randomisation=FALSE, zero.policy=TRUE, alternative="two.sided", 
+                           rank = FALSE, na.action=na.fail, spChk=NULL, adjust.n=TRUE)
+result_moran
+```
+
+# Simulasi Monte Carlo
+```{r}
+set.seed(123)
+MC<- moran.mc(Y, w, nsim=599)
+
+# View results (including p-value)
+MC
+```
+
+# Local Morans'I
+```{r}
+oid <- order(Y)
+localMI <- localmoran(Y, w)
+signifikansi_y <- rep(0,572)
+localMI <- cbind(localMI, signifikansi_y)
+localMI[,5] <- round(localMI[,5], 4)
+
+for(i in 1:nrow(localMI)){
+  if(localMI[i,5] <= 0.05){
+    localMI[i,6] <- 1 # SIGNIFIKAN = 1
+  } else{
+    localMI[i,6] <- 0 # TIDAK SIGNIFIKAN = 0
+  }
+}
+
+
+# Jumlah kecamatan yg signifikan
+sum(localMI[,6] == 1)
+
+# Jumlah kecamatan yg tidak signifikan
+sum(localMI[,6] != 1)
+
+View(localMI)
+```
+
+# Mapping Local Morans'I P-values
+```{r}
+jateng.map <- st_read("E:/GEOJSON/join_new_data.shp",quiet=TRUE)
+# MAPPING LOCAL MORAN'S I
+listrik <- jateng.map$LISTRIK
+listrik_localMI <- cbind(listrik, localMI)
+
+# install.packages("tmap")
+library(tmap)
+# tm_shape(localMI1) +
+#   tm_fill(col = "Ii",
+#           style = "pretty",
+#           palette = "RdBu",
+#           title = "local moran statistics") +
+#   tm_borders(alpha = 0.5)
+
+MoranLocalMap = cbind(listrik_localMI, jateng.map)
+MoranLocalMap = st_as_sf(MoranLocalMap, crs=st_crs(MoranLocalMap$geometry))
+current.mode <- tmap_mode("view") #switch to interactive map
+
+tm_shape(MoranLocalMap) +
+  tm_fill(col = "Pr.z....E.Ii..",
+          breaks=c(-Inf, 0.001, 0.01, 0.05, 0.1, Inf),
+          palette = "-Blues",
+          title = "local Moran's I p-values")+
+  tm_borders(alpha = 0.5) +
+  tm_layout(title="Mapping Local Moran's I P-Value")
+```
+
+# Mapping Local Morans'I values
+```{r}
+tm_shape(MoranLocalMap) +
+  tm_fill(col = "Ii",
+          style = "pretty",
+          palette = "RdBu",
+          title = "local moran statistics (Ii)")+
+  tm_borders(alpha = 0.5) +
+  tm_layout(title="Mapping Local Moran's I Values")
+```
+
+# LISA Cluster MAP 4 quadrant
+```{r}
+quadrant <- vector(mode = "numeric", length = nrow(localMI))
+DV <- jateng.map$LISTRIK - mean(jateng.map$LISTRIK)
+C_mI <- localMI[,1] - mean(localMI[,1])
+signif <- 0.05
+quadrant[DV >0 & C_mI>0] <- 4      
+quadrant[DV <0 & C_mI<0] <- 1      
+quadrant[DV <0 & C_mI>0] <- 2
+quadrant[DV >0 & C_mI<0] <- 3
+quadrant[localMI[,5]>signif] <- 0
+
+MoranLocalMap$quadrant <- quadrant 
+colors <- c("#ffffff", "#2c7bb6", "#abd9e9", "#fdae61", "#d7191c")
+clusters <- c("insignificant", "low-low", "low-high", "high-low", "high-high")
+
+# knitr::kable(head(MoranLocalMap, n=10))
+
+tm_shape(MoranLocalMap) +
+  tm_fill(col = "quadrant", style = "cat", palette = colors[c(sort(unique(quadrant)))+1], 
+          labels = clusters[c(sort(unique(quadrant)))+1], popup.vars = c("nmkec")) +
+  tm_view() +
+  tm_borders(alpha=0.5) +
+  tm_layout(title="LISA Map Cluster")
+  
+
+# Jumlah kecamatan yg signifikan
+sum(MoranLocalMap$quadrant == 1) 
+sum(MoranLocalMap$quadrant == 2)
+sum(MoranLocalMap$quadrant == 3)
+sum(MoranLocalMap$quadrant == 4)
+
+# Jumlah kecamatan yg tidak signifikan
+sum(MoranLocalMap$quadrant == 0)
+```
+
+# Moran's Plot
+```{r}
+# moran.plot(Y, w)
+y_scale <- scale(Y)
+y_scale <- as.vector(y_scale)
+mp <- moran.plot(Y, w, labels=as.character(dataset$NamaKecamatan), pch=16)
+# moran.plot(as.vector(scale(Y)), w,
+#            labels=as.character(dataset$NamaKecamatan), xlim=c(5, 75), ylim=c(10,60), pch=16)
+if (require(ggplot2, quietly=TRUE)) {
+  xname <- attr(mp, "xname")
+  ggplot(mp, aes(x=x, y=wx)) + geom_point(shape=1) + 
+    geom_smooth(formula=y ~ x, method="lm") + 
+    geom_hline(yintercept=mean(mp$wx), lty=2) + 
+    geom_vline(xintercept=mean(mp$x), lty=2) + theme_minimal() + 
+    geom_point(data=mp[mp$is_inf,], aes(x=x, y=wx), shape=9) +
+    geom_text(data=mp[mp$is_inf,], aes(x=x, y=wx, label=labels, vjust=1.5)) +
+    xlab(xname) + ylab(paste0("Spatially lagged ", xname))
+}
+```
+
+# Membuat cluster map LISA
+```{r}
+# shape <- st_read(system.file("shape/nc.shp", package="sf")) # included with sf package
+queen <- poly2nb(as(jateng.map, "Spatial"), queen = T)
+# summary(queen)
+
+# calucualte the lisa groups
+shape_lisa <- jateng.map %>% 
+  mutate(nb = st_neighbors(geometry),
+         wts = st_weights(queen),
+         lag_listrik = st_lag(LISTRIK, queen, wts),
+         lisa = categorize_lisa(LISTRIK, lag_listrik))
+
+# report results
+ggplot(data = shape_lisa) +
+  geom_sf(aes(fill = lisa))
+
+```
+
+# Konektivitas
+```{r}
+library(rgdal)
+jatengmap <- readOGR("E:/GEOJSON/join_new_data.shp")
+plot(jatengmap, border = 'black')
+plot(queen, coordinates(jatengmap), pch = 19, cex = 0.6, add = TRUE, col = "red")
+```
+
+```{r}
+rswm_q <- nb2listw(queen, zero.policy = TRUE)
+
+summary(rswm_q)
+```
+

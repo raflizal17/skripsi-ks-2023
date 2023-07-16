@@ -1,0 +1,92 @@
+---
+title: "Sintaks-pendugaan-SAE-SEBLUPFH"
+author: "Raflizal Fikrar Odriansyah"
+date: "2023-06-25"
+output: html_document
+---
+
+# Import library
+```{r}
+library(sae)
+library(spdep)
+library(rgdal) 
+library(nlme)
+library(readxl)
+library(MASS)
+```
+
+# Load data
+```{r}
+# Import data variabel penyerta dan hasil estimasi langsung
+dataset <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/dataset_skripsi_revisi.xlsx", sheet = 1)
+hasil_est_lgsg <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/dataset_skripsi_revisi.xlsx", sheet = 2)
+data_x <- dataset[, -c(1,2,3,4)]
+```
+
+# Pengujian autokorelasi spasial dan pembentukan matriks pembobot spasial
+```{r}
+# Uji Moran’s I
+W <- read.gal("E:/GEOJSON/QC_MAT.gal", override.id=TRUE)
+w <- nb2listw(W, glist=NULL, style="W", zero.policy=NULL)
+Y <- hasil_est_lgsg$Konsumsi_Listrik_Kapita
+moran.test(Y, w, randomisation=FALSE, zero.policy=TRUE, alternative="two.sided", rank = FALSE, na.action=na.fail, spChk=NULL, adjust.n=TRUE)
+# Menghitung spatial weight
+jatengmap <- readOGR("E:/GEOJSON/join_new_data.shp")
+spplot(jatengmap, "LISTRIK", sub="Rata-Rata Konsumsi Listrik Per Kapita")
+# Membentuk matriks pembobot spasial
+jateng.map <- st_read("E:/GEOJSON/join_new_data.shp", quiet=TRUE)
+queen.w <- poly2nb(as(jateng.map, "Spatial"), queen = T)
+# Membentuk matriks bobot tipe queen yang telah distandarisasi
+queen.w1 <- nb2mat(queen.w,style = "W")
+```
+
+# Estimasi tak langsung dengan model SAE SEBLUP-FH
+```{r}
+# Model SEBLUP-FH 1 (8 variabel penyerta dari hasil backward elimination)
+model_seblup_fh1 <- eblupSFH(hasil_est_lgsg$Konsumsi_Listrik_Kapita ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_fas_pddk + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh + data_x$kepadatan_penduduk, vardir = hasil_est_lgsg$Var, proxmat = queen.w1, method="REML")
+# Model SEBLUP-FH 2 (kepadatan penduduk diexclude)
+model_seblup_fh2 <- eblupSFH(hasil_est_lgsg$Konsumsi_Listrik_Kapita ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_fas_pddk + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, vardir = hasil_est_lgsg$Var, proxmat = queen.w1, method="REML")
+# Model SEBLUP-FH 3 (fasilitas pendidikan diexclude)
+model_seblup_fh3 <- eblupSFH(hasil_est_lgsg$Konsumsi_Listrik_Kapita ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh + data_x$kepadatan_penduduk, vardir = hasil_est_lgsg$Var, proxmat = queen.w1, method="REML")
+# Model SEBLUP-FH 4 (fasilitas pendidikan dan kepadatan penduduk diexclude)
+model_seblup_fh4 <- eblupSFH(hasil_est_lgsg$Konsumsi_Listrik_Kapita ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, vardir = hasil_est_lgsg$Var, proxmat = queen.w1, method="REML")
+# Fit model SEBLUP-FH
+model_seblup_fh1$fit
+model_seblup_fh2$fit
+model_seblup_fh3$fit
+model_seblup_fh4$fit # model yang dipilih
+```
+
+# Ekstrak hasil estimasi model
+```{r}
+# Ekstrak hasil estimasi model SEBLUP-FH
+y_seblup <- model_seblup_fh4$eblup
+# Ekstrak koefisien ragam pengaruh acak dan koefisien autoregresi spasial
+var_rand_seblup <- model_seblup_fh4$fit$refvar
+cor_rand_seblup <- model_seblup_fh4$fit$spatialcorr
+# Ekstrak nilai random effect area
+jlh_baris <- nrow(dataset)
+var_x_seblup <- matrix(c(data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh), nrow=jlh_baris, ncol=6)
+beta_seblup <- matrix(model_seblup_fh4$fit$estcoef$beta, ncol = 1)
+beta_seblup_no_intercept <- matrix(beta_seblup[-1,], ncol = 1)
+gama_seblup <- model_seblup_fh4$fit$refvar/(model_seblup_fh4$fit$refvar+hasil_est_lgsg$Var)
+y_mat <- matrix(hasil_est_lgsg$Konsumsi_Listrik_Kapita, ncol = 1)
+rand_effect_seblup <-gama_seblup*(y_mat-var_x_seblup%*%beta_seblup_no_intercept)
+# Ekstrak nilai residual
+res_y_seblup <- hasil_est_lgsg$Konsumsi_Listrik_Kapita - y_seblup
+# Uji normalitas random effect area dan residual
+ks.test(rand_effect_seblup, "pnorm", mean(rand_effect_seblup), sd(rand_effect_seblup))
+ks.test(res_y_seblup, "pnorm", mean(res_y_seblup), sd(res_y_seblup))
+# Ekstrak nilai MSE dan RRMSE model SEBLUP-FH
+mse_seblup <- mseSFH(hasil_est_lgsg$Konsumsi_Listrik_Kapita ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, hasil_est_lgsg$Var, proxmat = queen.w1, method="REML")
+mse_sfh <- round(mse_seblup$mse, 5)
+rrmse_sfh <- round((sqrt(mse_sfh)/y_seblup)*100, 5)
+```
+
+# Ekspor hasil estimasi ke penyimpanan lokal
+```{r}
+data_est_seblupFH <- cbind(hasil_est_lgsg[,c(1,2,3)], y_seblup, mse_sfh, rrmse_sfh)
+names(data_est_seblupFH) <- c("No", "KodeKec", "NamaKec", "Penduga_SEBLUP_FH", "MSE_SEBLUP_FH", "RRMSE_SEBLUP_FH")
+write.csv(data_est_seblupFH, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Estimasi_SEBLUP_FH.csv")
+```
+

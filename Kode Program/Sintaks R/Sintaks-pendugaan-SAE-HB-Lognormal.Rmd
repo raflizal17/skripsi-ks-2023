@@ -1,0 +1,246 @@
+---
+title: "Sintaks-pendugaan-SAE-HB-Lognormal"
+author: "Raflizal Fikrar Odriansyah"
+date: "2023-06-25"
+output: html_document
+---
+
+# Import library
+```{r}
+library(readxl)
+library(rjags)
+library(saeHB)
+```
+
+# Load data
+```{r}
+# Import data variabel penyerta dan hasil estimasi langsung
+dataset <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/dataset_skripsi_revisi.xlsx", sheet = 1)
+hasil_est_lgsg <- read_excel("E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/dataset_skripsi_revisi.xlsx", sheet = 2)
+data_x <- dataset[, -c(1,2,3,4)]
+```
+
+# Estimasi tak langsung dengan model SAE HB Lognormal
+```{r}
+# Inisiasi nilai prior
+c <- c(0,0,0,0,0,0,0)
+vc <- c(1,1,1,1,1,1,1)
+set.seed(123)
+
+## Model HB 1 (burn in = 2000, iter.mcmc = 10000, iter.update = 3, thin = 3)
+model.log.normal1 <- Lognormal(PEND_LGSG ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, iter.update = 3, iter.mcmc = 10000, coef = c, var.coef = vc, thin = 3, burn.in = 2000, tau.u = 1, data = dataset)
+# Korelasi kendall antara penduga HB dengan penduga langsung
+cor.test(model.log.normal1$Est$MEAN, dataset$PEND_LGSG, method = "kendall")
+y_hb1 <- model.log.normal1$Est$MEAN
+var_hb1 <- model.log.normal1$Est$SD^2
+std_hb1 <- model.log.normal1$Est$SD
+lb_hb1 <- model.log.normal1$Est$`2.5%`
+ub_hb1 <- model.log.normal1$Est$`97.5%`
+mse_hb1 <- var_hb1
+rse_hb1 <- round((sqrt(mse_hb1)/y_hb1)*100, 5)
+var_rand_hb1 <- model.log.normal1$refvar
+autocorr.plot(model.log.normal1$plot[[3]], col="red")  # generate ACF Plot
+plot(model.log.normal1$plot[[3]], col="red") # generate Density and trace plot
+# Ekspor hasil estimasi ke penyimpanan lokal
+data_est_hb1 <- cbind(hasil_est_lgsg[,c(1,2,3)], y_hb1, std_hb1, lb_hb1, ub_hb1, var_hb1, mse_hb1, rse_hb1)
+names(data_est_hb1) <- c("No", "KodeKec", "NamaKec", "Penduga_HB1", "SD_HB1", "LB_HB1", "UB_HB1", "VAR_HB1", "MSE_HB1", "RSE_HB1")
+write.csv(data_est_hb1,"E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Estimasi_MODEL_HB1.csv")
+# Ekspor hasil estimasi koefisien ke penyimpanan lokal
+beta_koef_hb1 <- model.log.normal1$coefficient$Mean
+sd_koef_hb1 <- model.log.normal1$coefficient$SD
+lb_koef_hb1 <- model.log.normal1$coefficient$`2.5%`
+ub_koef_hb1 <- model.log.normal1$coefficient$`97.5%`
+est_koef_param <- c("b0", "b1", "b2", "b3", "b4", "b5", "b6")
+data_est_koef_hb1 <- cbind(est_koef_param, beta_koef_hb1, sd_koef_hb1, lb_koef_hb1, ub_koef_hb1)
+write.csv(data_est_koef_hb1,"E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Est_Koef_MODEL_HB1.csv")
+
+## Model HB 2 (burn in = 3000, iter.mcmc = 15000, iter.update = 5, thin = 5)
+model.log.normal2 <- Lognormal(PEND_LGSG ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, iter.update = 5, iter.mcmc = 15000, coef = c, var.coef = vc, thin = 5, burn.in = 3000, tau.u = 1, data = dataset)
+# Korelasi kendall antara penduga HB dengan penduga langsung
+cor.test(model.log.normal2$Est$MEAN, dataset$PEND_LGSG, method = "kendall")
+y_hb2 <- model.log.normal2$Est$MEAN
+var_hb2 <- model.log.normal2$Est$SD^2
+std_hb2 <- model.log.normal2$Est$SD
+lb_hb2 <- model.log.normal2$Est$`2.5%`
+ub_hb2 <- model.log.normal2$Est$`97.5%`
+mse_hb2 <- var_hb2
+rse_hb2 <- round((sqrt(mse_hb2)/y_hb2)*100, 5)
+var_rand_hb2 <- model.log.normal2$refvar
+autocorr.plot(model.log.normal2$plot[[3]], col="red")  # generate ACF Plot
+plot(model.log.normal2$plot[[3]], col="red") # generate Density and trace plot
+# Ekspor hasil estimasi ke penyimpanan lokal
+data_est_hb2 <- cbind(hasil_est_lgsg[,c(1,2,3)], y_hb2, std_hb2, lb_hb2, ub_hb2, var_hb2, mse_hb2, rse_hb2)
+names(data_est_hb2) <- c("No", "KodeKec", "NamaKec", "Penduga_HB2", "SD_HB2", "LB_HB2", "UB_HB2", "VAR_HB2", "MSE_HB2", "RSE_HB2")
+write.csv(data_est_hb2, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Estimasi_MODEL_HB2.csv")
+# Ekspor hasil estimasi koefisiein ke penyimpanan lokal
+beta_koef_hb2 <- model.log.normal2$coefficient$Mean
+sd_koef_hb2 <- model.log.normal2$coefficient$SD
+lb_koef_hb2 <- model.log.normal2$coefficient$`2.5%`
+ub_koef_hb2 <- model.log.normal2$coefficient$`97.5%`
+est_koef_param <- c("b0", "b1", "b2", "b3", "b4", "b5", "b6")
+data_est_koef_hb2 <- cbind(est_koef_param, beta_koef_hb2, sd_koef_hb2, lb_koef_hb2, ub_koef_hb2)
+write.csv(data_est_koef_hb2, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Est_Koef_MODEL_HB2.csv")
+
+## Model HB 3 (burn in = 4000, iter.mcmc = 20000, iter.update = 7, thin = 7)
+model.log.normal3 <- Lognormal(PEND_LGSG ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, iter.update = 7, iter.mcmc = 20000, coef = c, var.coef = vc, thin = 7, burn.in = 4000, tau.u = 1, data = dataset)
+# Korelasi kendall antara penduga HB dengan penduga langsung
+cor.test(model.log.normal3$Est$MEAN, dataset$PEND_LGSG, method ="kendall")
+y_hb3 <- model.log.normal3$Est$MEAN
+var_hb3 <- model.log.normal3$Est$SD^2
+std_hb3 <- model.log.normal3$Est$SD
+lb_hb3 <- model.log.normal3$Est$`2.5%`
+ub_hb3 <- model.log.normal3$Est$`97.5%`
+mse_hb3 <- var_hb3
+rse_hb3 <- round((sqrt(mse_hb3)/y_hb3)*100, 5)
+var_rand_hb3 <- model.log.normal3$refvar
+autocorr.plot(model.log.normal3$plot[[3]], col="red")  # generate ACF Plot
+plot(model.log.normal3$plot[[3]], col="red") # generate Density and trace plot
+# Ekspor hasil estimasi ke penyimpanan lokal
+data_est_hb3 <- cbind(hasil_est_lgsg[,c(1,2,3)], y_hb3, std_hb3, lb_hb3, ub_hb3, var_hb3, mse_hb3, rse_hb3)
+names(data_est_hb3) <- c("No", "KodeKec", "NamaKec", "Penduga_HB3", "SD_HB3", "LB_HB3", "UB_HB3", "VAR_HB3", "MSE_HB3", "RSE_HB3")
+write.csv(data_est_hb3, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Estimasi_MODEL_HB3.csv")
+# Ekspor hasil estimasi koefisien ke penyimpanan lokal
+beta_koef_hb3 <- model.log.normal3$coefficient$Mean
+sd_koef_hb3 <- model.log.normal3$coefficient$SD
+lb_koef_hb3 <- model.log.normal3$coefficient$`2.5%`
+ub_koef_hb3 <- model.log.normal3$coefficient$`97.5%`
+est_koef_param <- c("b0", "b1", "b2", "b3", "b4", "b5", "b6")
+data_est_koef_hb3 <- cbind(est_koef_param, beta_koef_hb3, sd_koef_hb3, lb_koef_hb3, ub_koef_hb3)
+write.csv(data_est_koef_hb3, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Est_Koef_MODEL_HB3.csv")
+
+## Model HB 4 (burn in = 5000, iter.mcmc = 25000, iter.update = 9, thin = 9)
+model.log.normal4 <- Lognormal(PEND_LGSG ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, iter.update = 9, iter.mcmc = 25000, coef = c, var.coef = vc, thin = 9, burn.in = 5000, tau.u = 1, data = dataset)
+# Korelasi kendall antara penduga HB dengan penduga langsung
+cor.test(model.log.normal4$Est$MEAN, dataset$PEND_LGSG, method = "kendall")
+y_hb4 <- model.log.normal4$Est$MEAN
+std_hb4 <- model.log.normal4$Est$SD
+lb_hb4 <- model.log.normal4$Est$`2.5%`
+ub_hb4 <- model.log.normal4$Est$`97.5%`
+var_hb4 <- model.log.normal4$Est$SD^2
+mse_hb4 <- var_hb4
+rse_hb4 <- round((sqrt(mse_hb4)/y_hb4)*100, 5)
+var_rand_hb4 <- model.log.normal4$refvar
+autocorr.plot(model.log.normal4$plot[[3]], col="red")  # generate ACF Plot
+plot(model.log.normal4$plot[[3]], col="red") # generate Density and trace plot
+# Ekspor hasil estimasi ke penyimpanan lokal
+data_est_hb4 <- cbind(hasil_est_lgsg[,c(1,2,3)], y_hb4, std_hb4, lb_hb4, ub_hb4, var_hb4, mse_hb4, rse_hb4)
+names(data_est_hb4) <- c("No", "KodeKec", "NamaKec", "Penduga_HB4", "SD_HB4", "LB_HB4", "UB_HB4", "VAR_HB4", "MSE_HB4", "RSE_HB4")
+write.csv(data_est_hb4, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Estimasi_MODEL_HB4.csv")
+# Ekspor hasil estimasi koefisien ke penyimpanan lokal
+beta_koef_hb4 <- model.log.normal4$coefficient$Mean
+sd_koef_hb4 <- model.log.normal4$coefficient$SD
+lb_koef_hb4 <- model.log.normal4$coefficient$`2.5%`
+ub_koef_hb4 <- model.log.normal4$coefficient$`97.5%`
+est_koef_param <- c("b0", "b1", "b2", "b3", "b4", "b5", "b6")
+data_est_koef_hb4 <- cbind(est_koef_param, beta_koef_hb4, sd_koef_hb4, lb_koef_hb4, ub_koef_hb4)
+write.csv(data_est_koef_hb4, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Est_Koef_MODEL_HB4.csv")
+
+## Model HB 5 (burn in = 6000, iter.mcmc = 30000, iter.update = 11, thin = 11)
+model.log.normal5 <- Lognormal(PEND_LGSG ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted+ data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, iter.update = 11, iter.mcmc = 35000, coef = c, var.coef = vc, thin = 11, burn.in = 6000, tau.u = 1, data = dataset)
+# Korelasi kendall antara penduga HB dengan penduga langsung
+cor.test(model.log.normal5$Est$MEAN, dataset$PEND_LGSG, method = 'kendall')
+y_hb5 <- model.log.normal5$Est$MEAN
+std_hb5 <- model.log.normal5$Est$SD
+lb_hb5 <- model.log.normal5$Est$`2.5%`
+ub_hb5 <- model.log.normal5$Est$`97.5%`
+var_hb5 <- model.log.normal5$Est$SD^2
+mse_hb5 <- var_hb5
+rse_hb5 <- round((sqrt(mse_hb5)/y_hb5)*100, 5)
+var_rand_hb5 <- model.log.normal5$refvar
+autocorr.plot(model.log.normal5$plot[[3]], col="red")  # generate ACF Plot
+plot(model.log.normal5$plot[[3]], col="red") # generate Density and trace plot
+# Ekspor hasil estimasi ke penyimpanan lokal
+data_est_hb5 <- cbind(hasil_est_lgsg[,c(1,2,3)], y_hb5, std_hb5, lb_hb5, ub_hb5, var_hb5, mse_hb5, rse_hb5)
+names(data_est_hb5) <- c("No", "KodeKec", "NamaKec", "Penduga_HB5", "SD_HB5", "LB_HB5", "UB_HB5", "VAR_HB5", "MSE_HB5", "RSE_HB5")
+write.csv(data_est_hb5, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Estimasi_MODEL_HB5.csv")
+# Ekspor hasil estimasi koefisien ke penyimpanan lokal
+beta_koef_hb5 <- model.log.normal5$coefficient$Mean
+sd_koef_hb5 <- model.log.normal5$coefficient$SD
+lb_koef_hb5 <- model.log.normal5$coefficient$`2.5%`
+ub_koef_hb5 <- model.log.normal5$coefficient$`97.5%`
+est_koef_param <- c("b0", "b1", "b2", "b3", "b4", "b5", "b6")
+data_est_koef_hb5 <- cbind(est_koef_param, beta_koef_hb5, sd_koef_hb5, lb_koef_hb5, ub_koef_hb5)
+write.csv(data_est_koef_hb5, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Est_Koef_MODEL_HB5.csv")
+
+## Model HB 6 (burn in = 7000, iter.mcmc = 35000, iter.update = 13, thin = 13)
+model.log.normal6 <- Lognormal(PEND_LGSG ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, iter.update = 13, iter.mcmc = 40000, coef = c, var.coef = vc, thin = 13, burn.in = 7000, tau.u = 1, data = dataset)
+# Korelasi kendall antara penduga HB dengan penduga langsung
+cor.test(model.log.normal6$Est$MEAN, dataset$PEND_LGSG, method = "kendall")
+y_hb6 <- model.log.normal6$Est$MEAN
+std_hb6 <- model.log.normal6$Est$SD
+lb_hb6 <- model.log.normal6$Est$`2.5%`
+ub_hb6 <- model.log.normal6$Est$`97.5%`
+var_hb6 <- model.log.normal6$Est$SD^2
+mse_hb6 <- var_hb6
+rse_hb6 <- round((sqrt(mse_hb6)/y_hb6)*100, 5)
+var_rand_hb6 <- model.log.normal6$refvar
+autocorr.plot(model.log.normal6$plot[[3]], col="red")  # generate ACF Plot
+plot(model.log.normal6$plot[[3]], col="red") # generate Density and trace plot
+# Ekspor hasil estimasi ke penyimpanan lokal
+data_est_hb6 <- cbind(hasil_est_lgsg[,c(1,2,3)], y_hb6, std_hb6, lb_hb6, ub_hb6, var_hb6, mse_hb6, rse_hb6)
+names(data_est_hb6) <- c("No", "KodeKec", "NamaKec", "Penduga_HB6", "SD_HB6", "LB_HB6", "UB_HB6", "VAR_HB6", "MSE_HB6", "RSE_HB6")
+write.csv(data_est_hb6, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Estimasi_MODEL_HB6.csv")
+# Ekspor hasil estimasi koefisien ke penyimpanan lokal
+beta_koef_hb6 <- model.log.normal6$coefficient$Mean
+sd_koef_hb6 <- model.log.normal6$coefficient$SD
+lb_koef_hb6 <- model.log.normal6$coefficient$`2.5%`
+ub_koef_hb6 <- model.log.normal6$coefficient$`97.5%`
+est_koef_param <- c("b0", "b1", "b2", "b3", "b4", "b5", "b6")
+data_est_koef_hb6 <- cbind(est_koef_param, beta_koef_hb6, sd_koef_hb6, lb_koef_hb6, ub_koef_hb6)
+write.csv(data_est_koef_hb6, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Est_Koef_MODEL_HB6.csv")
+
+## Model HB 7 (burn in = 8000, iter.mcmc = 45000, iter.update = 15, thin = 15)
+model.log.normal7 <- Lognormal(PEND_LGSG ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, iter.update = 15, iter.mcmc = 45000, coef = c, var.coef = vc, thin = 15, burn.in = 8000, tau.u = 1, data = dataset)
+# Korelasi kendall antara penduga HB dengan penduga langsung
+cor.test(model.log.normal7$Est$MEAN, dataset$PEND_LGSG, method = "kendall")
+y_hb7 <- model.log.normal7$Est$MEAN
+std_hb7 <- model.log.normal7$Est$SD
+lb_hb7 <- model.log.normal7$Est$`2.5%`
+ub_hb7 <- model.log.normal7$Est$`97.5%`
+var_hb7 <- model.log.normal7$Est$SD^2
+mse_hb7 <- var_hb7
+rse_hb7 <- round((sqrt(mse_hb7)/y_hb7)*100, 5)
+var_rand_hb7 <- model.log.normal7$refvar
+autocorr.plot(model.log.normal7$plot[[3]], col="red")  # generate ACF Plot
+plot(model.log.normal7$plot[[3]], col="red") # generate Density and trace plot
+# Ekspor hasil estimasi ke penyimpanan lokal
+data_est_hb7 <- cbind(hasil_est_lgsg[,c(1,2,3)], y_hb7, std_hb7, lb_hb7, ub_hb7, var_hb7, mse_hb7, rse_hb7)
+names(data_est_hb7) <- c("No", "KodeKec", "NamaKec", "Penduga_HB7", "SD_HB7", "LB_HB7", "UB_HB7", "VAR_HB7", "MSE_HB7", "RSE_HB7")
+write.csv(data_est_hb7, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Estimasi_MODEL_HB7.csv")
+# Ekspor hasil estimasi koefisien ke penyimpanan lokal
+beta_koef_hb7 <- model.log.normal7$coefficient$Mean
+sd_koef_hb7 <- model.log.normal7$coefficient$SD
+lb_koef_hb7 <- model.log.normal7$coefficient$`2.5%`
+ub_koef_hb7 <- model.log.normal7$coefficient$`97.5%`
+est_koef_param <- c("b0", "b1", "b2", "b3", "b4", "b5", "b6")
+data_est_koef_hb7 <- cbind(est_koef_param, beta_koef_hb7, sd_koef_hb7, lb_koef_hb7, ub_koef_hb7)
+write.csv(data_est_koef_hb7, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Est_Koef_MODEL_HB7.csv")
+
+## Model HB 8 (burn in = 9000, iter.mcmc = 50000, iter.update = 16, thin = 16
+model.log.normal8 <- Lognormal(PEND_LGSG ~ data_x$bui_median + data_x$pm2.5_median + data_x$elevation_median + data_x$rwi_weighted + data_x$jlh_sarana_eko + data_x$jlh_tmpt_ibdh, iter.update = 16, iter.mcmc = 50000, coef = c, var.coef = vc, thin = 16, burn.in = 9000, tau.u = 1, data = dataset)
+# Korelasi kendall antara penduga HB dengan penduga langsung
+cor.test(model.log.normal8$Est$MEAN, dataset$PEND_LGSG, method = "kendall")
+y_hb8 <- model.log.normal8$Est$MEAN
+std_hb8 <- model.log.normal8$Est$SD
+lb_hb8 <- model.log.normal8$Est$`2.5%`
+ub_hb8 <- model.log.normal8$Est$`97.5%`
+var_hb8 <- model.log.normal8$Est$SD^2
+mse_hb8 <- var_hb8
+rse_hb8 <- round((sqrt(mse_hb8)/y_hb8)*100, 5)
+var_rand_hb8 <- model.log.normal8$refvar
+autocorr.plot(model.log.normal8$plot[[3]], col="red")  # generate ACF Plot
+plot(model.log.normal8$plot[[3]], col="red") # generate Density and trace plot
+# Ekspor hasil estimasi ke penyimpanan lokal
+data_est_hb8 <- cbind(hasil_est_lgsg[,c(1,2,3)], y_hb8, std_hb8, lb_hb8, ub_hb8, var_hb8, mse_hb8, rse_hb8)
+names(data_est_hb8) <- c("No", "KodeKec", "NamaKec", "Penduga_HB8", "SD_HB8", "LB_HB8", "UB_HB8", "VAR_HB8", "MSE_HB8", "RSE_HB8")
+write.csv(data_est_hb8, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Estimasi_MODEL_HB8.csv")
+# Ekspor hasil estimasi koefisien ke penyimpanan lokal
+beta_koef_hb8 <- model.log.normal8$coefficient$Mean
+sd_koef_hb8 <- model.log.normal8$coefficient$SD
+lb_koef_hb8 <- model.log.normal8$coefficient$`2.5%`
+ub_koef_hb8 <- model.log.normal8$coefficient$`97.5%`
+est_koef_param <- c("b0", "b1", "b2", "b3", "b4", "b5", "b6")
+data_est_koef_hb8 <- cbind(est_koef_param, beta_koef_hb8, sd_koef_hb8, lb_koef_hb8, ub_koef_hb8)
+write.csv(data_est_koef_hb8, "E:/FOLDER KULIAH/STIS/SEMESTER 7/SKRIPSI/HASIL_RUNNING_MODEL/Hasil_Est_Koef_MODEL_HB8.csv")
+```
+

@@ -1,0 +1,1358 @@
+---
+title: "Dashboard Informasi Hasil Skripsi"
+# author: "Raflizal Fikrar Odriansyah"
+# date: '2022-06-07'
+output: 
+  flexdashboard::flex_dashboard:
+    vertical_layout: fill
+    theme: 
+      version: 4
+      bootswatch: spacelab
+---
+
+```{js}
+// Inverse the color of navigation bar.
+$('.navbar-inverse').removeClass('navbar-inverse').addClass('navbar-default');
+```
+
+```{r setup, include=FALSE}
+# Load necessary packages. 
+library(flexdashboard) # Dashboard package
+library(highcharter) # Interactive data visualizations
+library(viridis) # Color gradients
+library(tidyverse) # Metapackge
+library(leafletCN)
+# library(countrycode) # Converting country names/codes
+# library(DT) # Displaying data tables
+# library(crosstalk) # Provides interactivity for HTML widgets
+library(htmlwidgets)
+library(htmltools)
+library(plotly) # Interactive data visualizations
+library(readxl)
+library(dplyr)
+library(shiny)
+library(leaflet)
+library(RColorBrewer)
+library(tidyverse)
+library(raster)
+library(sf)
+library(sp)
+library(scales)
+library(ggsn)
+library(plotly)
+library(dbscan)
+library(rgdal)
+library(spatialreg)
+library(spatial)
+library(mapview)
+library(tidyselect)
+library(tidyr)
+library(broom)
+```
+
+
+```{r include=FALSE}
+# Read in data 1
+data1 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 1)
+names(data1) <- c("No", "Tahun", "Konsumsi_listrik_perkapita")
+
+
+# Read in data 2
+data2 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 2)
+names(data2) <- c("Tahun", "GWh", "Kategori")
+
+
+# Read in data 3
+data3 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 3)
+names(data3) <- c("Tahun", "Sisa_listrik")
+
+# Read in data 4
+data4 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 4)
+names(data4) <- c("Jenis_pelanggan", "Jumlah_pelanggan", "Persentase")
+data4$Jenis_pelanggan <- as.factor(data4$Jenis_pelanggan)
+
+
+# Read in data 5
+data5 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 5)
+names(data5) <- c("Tahun", "Jenis_pelanggan", "Energi_terjual")
+data5$Jenis_pelanggan <- as.factor(data5$Jenis_pelanggan)
+data5$Tahun <- as.factor(data5$Tahun)
+
+# Read in data 6
+data6 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 6)
+names(data6) <- c("Jenis_pelanggan", "Jumlah_pelanggan", "Persentase")
+data6$Jenis_pelanggan <- as.factor(data6$Jenis_pelanggan)
+
+# Read in data 7
+data7 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 7)
+data7$KATEG_NILAI_RSE <- as.factor(data7$KATEG_NILAI_RSE)
+data7$KATEG_NILAI_MSE <- as.factor(data7$KATEG_NILAI_MSE)
+
+# Read in data 8
+data8 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 8)
+data8$KATEG_NILAI_RRMSE <- as.factor(data8$KATEG_NILAI_RRMSE)
+
+# Read in data 9
+data9 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 9)
+data9$KATEG_NILAI_RRMSE <- as.factor(data9$KATEG_NILAI_RRMSE)
+
+# Read in data 10
+data10 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 10)
+data10$KATEG_NILAI_RRMSE <- as.factor(data10$KATEG_NILAI_RRMSE)
+
+# Read in data 11
+data11 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 11)
+data11$No <- as.factor(data11$No)
+data11$Model_Pendugaan <- as.factor(data11$Model_Pendugaan)
+
+# Read in data 12
+data12 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 12)
+
+```
+
+
+```{r include=FALSE}
+# Create a custom theme for the plots. 
+custom_theme <- hc_theme(
+  colors = c('#5CACEE', 'green', 'red'),
+  chart = list(
+         backgroundColor = '#FAFAFA', 
+         plotBorderColor = "black"),
+  xAxis = list(
+         gridLineColor = "C9C9C9", 
+         labels = list(style = list(color = "#333333")), 
+         lineColor = "#C9C9C9", 
+         minorGridLineColor = "#C9C9C9", 
+         tickColor = "#C9C9C9", 
+         title = list(style = list(color = "#333333"))), 
+  yAxis = list(
+         gridLineColor = "#C9C9C9", 
+         labels = list(style = list(color = "#333333")), 
+         lineColor = "#C9C9C9", 
+         minorGridLineColor = "#C9C9C9", 
+         tickColor = "#C9C9C9", 
+         tickWidth = 1, 
+         title = list(style = list(color = "#333333"))),   
+  title = list(style = list(color = '#333333', fontFamily = "Lato")),
+  subtitle = list(style = list(color = '#666666', fontFamily = "Lato")),
+  legend = list(
+         itemStyle = list(color = "#333333"), 
+         itemHoverStyle = list(color = "#FFF"), 
+         itemHiddenStyle = list(color = "#606063")), 
+  credits = list(style = list(color = "#666")),
+  itemHoverStyle = list(color = 'gray'))
+```
+
+```{=html}
+<style>
+.colored {
+  background-color: #FAFAFA;
+}
+</style>
+```
+
+# Data Sektoral
+
+## Column {.tabset .tabset-fade .colored data-width="650"}
+
+### Konsumsi Listrik Per Kapita {.no-padding}
+
+```{r}
+# Create tibble for our line plot.  
+overall_tibble <- data1 %>%
+  dplyr::select(Tahun, Konsumsi_listrik_perkapita)
+
+# Create line plot.
+highchart() %>% 
+    hc_add_series(overall_tibble, hcaes(x = Tahun, y = Konsumsi_listrik_perkapita, 
+                                        color = Konsumsi_listrik_perkapita), type = "line") %>%
+    hc_tooltip(crosshairs = TRUE, borderWidth = 1.5, headerFormat = "", pointFormat = paste("Tahun: <b>{point.x}</b> <br> Konsumsi Listrik Perkapita: <b>{point.y}</b> KWh/Kapita")) %>%
+    hc_title(text = "Konsumsi Listrik Per Kapita Indonesia Tahun 2012-2021") %>% 
+    hc_subtitle(text = "(Sumber: Statistik Ketenagalistrikan Kementerian ESDM)") %>%
+    hc_xAxis(title = list(text = "Tahun")) %>%
+    hc_yAxis(title = list(text = "Konsumsi Listrik Perkapita (KWh/Kapita)"),
+             allowDecimals = FALSE,
+             plotLines = list(list(
+                    color = "black", width = 1, dashStyle = "Dash", 
+                    value = mean(overall_tibble$Konsumsi_listrik_perkapita),
+                    label = list(text = "Mean = 975.7 KWh/Kapita", 
+                                 style = list(color = "black"))))) %>%
+    hc_legend(enabled = FALSE) %>% 
+    hc_add_theme(custom_theme)
+```
+
+### Energi Listrik PLN {.no-padding}
+```{r}
+# Create tibble for our line plot
+overall_tibble <- data2 %>%
+  dplyr::select(Tahun, GWh, Kategori)
+
+# Pick color for graph. 
+cat_color <- c("#003153", "#cc5533")
+
+# Create line plot.
+highchart() %>% 
+  hc_add_series(overall_tibble, hcaes(x = Tahun, y = GWh, group = Kategori), type = "line", color = cat_color) %>%
+  hc_tooltip(crosshairs = TRUE, borderWidth = 1.5, headerFormat = "", pointFormat = paste("Tahun: <b>{point.x}</b> <br>","Kategori: <b>{point.Kategori}</b><br>", "<b>{point.y} GWh</b> ")) %>%
+  hc_title(text = "Suplai Listrik PLN dan Listrik yang Terjual Tahun 2012-2021") %>% 
+  hc_subtitle(text = "(Sumber: Statistik PLN)") %>%
+  hc_xAxis(title = list(text = "Tahun")) %>%
+  hc_yAxis(title = list(text = "Giga Watt hours (GWH)"), allowDecimals = FALSE)  %>%
+  hc_add_theme(custom_theme)
+```
+
+
+### Sisa Pasokan Listrik PLN {.no-padding}
+
+```{r}
+# Create tibble for our line plot
+data3_tibble <- data3 %>%
+  dplyr::select(Tahun, Sisa_listrik)
+
+# Create line plot.
+highchart() %>% 
+    hc_add_series(data3_tibble, hcaes(x = Tahun, y = Sisa_listrik, color = Sisa_listrik), type = "line") %>%
+    hc_tooltip(crosshairs = TRUE, borderWidth = 1.5, headerFormat = "", pointFormat = paste("Tahun: <b>{point.x}</b> <br> Sisa Pasokan Listrik PLN: <b>{point.y} GWh</b>")) %>%
+    hc_title(text = "Sisa Pasokan Listrik PLN Tahun 2012-2021") %>% 
+    hc_subtitle(text = "(Sumber: Statistik PLN)") %>%
+    hc_xAxis(title = list(text = "Tahun")) %>%
+    hc_yAxis(title = list(text = "Sisa Pasokan Listrik PLN (GWh)"),
+             allowDecimals = FALSE,
+             plotLines = list(list(
+                    color = "black", width = 1, dashStyle = "Dash",
+                    value = mean(data3_tibble$Sisa_listrik),
+                    label = list(text = "Mean = 30676.99 GWh", 
+                                 style = list(color = 'black'))))) %>% 
+    hc_legend(enabled = FALSE) %>%
+    hc_add_theme(custom_theme)
+```
+
+
+### Energi Listrik yang Terjual Distribusi Jateng {.no-padding}
+
+```{r}
+data5$Energi_terjual <- round(data5$Energi_terjual, 3)
+
+# Create bar plot.
+data5 %>% 
+  hchart('column', hcaes(x = 'Jenis_pelanggan', y = 'Energi_terjual', group = 'Tahun')) %>%
+  hc_colors(c("#1ABC9C", "#F5B041", "#e74c3c")) %>%
+  # hc_tooltip(pointFormat = paste("<b>{point.y} GWh</b>")) %>%
+    hc_title(text = "Energi Listrik PLN Distribusi Jateng yang Terjual (GWh) Tahun 2019-2021 Menurut Jenis Pelanggan") %>% 
+    hc_subtitle(text = "(Sumber: Statistik PLN)") %>%
+    hc_xAxis(title = list(text = "Jenis Pelanggan")) %>%
+    hc_yAxis(title = list(text = "Energi Yang Terjual (GWh)"),
+             allowDecimals = FALSE) %>% 
+    hc_legend(enabled = FALSE) %>%
+    hc_add_theme(custom_theme)
+```
+
+
+## Column {data-width="350"}
+
+### Jumlah Pengguna Listrik PLN 2021<br> Menurut Jenis Pelanggan<font size='0.4'> </font> {.no-title .no-padding .colored}
+```{r}
+# cat_color <- c("#1ABC9C", "#F5B041", "#e74c3c", "#0073b7", "#00c0ef", "#F44DF3")
+# Create pie chart
+hchart(
+  data4, "pie", hcaes(name = Jenis_pelanggan, y = Jumlah_pelanggan),
+  name = "Jumlah Pelanggan",
+  innerSize = "60%",
+  dataLabels = list(format = "{point.name}<br>({point.percentage:.1f}%)")
+  ) %>% 
+  hc_title(text = "Jumlah Pengguna Listrik PLN 2021<br>Menurut <b>Jenis Pelanggan<b>", 
+           style = list(fontWeight = "bold", fontSize = "13px")) %>% 
+  hc_subtitle(text = "(Sumber: Statistik PLN)", 
+              style = list(fontWeight = "bold", fontSize = "10px")) %>%
+  hc_tooltip(
+    useHTML = TRUE,
+    style = list(fontSize = "15px"),
+    headerFormat = "",
+    pointFormat = "<div style='text-align: center;'> <b>{point.name}</b><br>{point.y}</div>",
+    positioner = JS(
+      "function () {
+      
+        /* one of the most important parts! */
+        xp =  this.chart.chartWidth/2 - this.label.width/2
+        yp =  this.chart.chartHeight/2 - this.label.height/2
+      
+        return { x: xp, y: yp };
+      
+      }"),
+    shadow = FALSE,
+    borderWidth = 0,
+    backgroundColor = "transparent",
+    hideDelay = 1000
+    )
+```
+
+### Jumlah Pengguna Listrik PLN Distribusi Jateng 2021<br> Menurut Jenis Pelanggan<font size='0.4'> </font> {.no-title .no-padding .colored}
+```{r}
+# cat_color <- c("#1ABC9C", "#F5B041", "#e74c3c", "#0073b7", "#00c0ef", "#F44DF3")
+hchart(
+  data6, "pie", hcaes(name = Jenis_pelanggan, y = Jumlah_pelanggan),
+  name = "Jumlah Pelanggan",
+  innerSize = "60%",
+  dataLabels = list(format = "{point.name}<br>({point.percentage:.1f}%)")
+  ) %>% 
+  hc_title(text = "Jumlah Pengguna Listrik PLN Distribusi Jateng 2021<br>Menurut <b>Jenis Pelanggan<b>",
+           style = list(fontWeight = "bold", fontSize = "13px")) %>% 
+  hc_subtitle(text = "(Sumber: Statistik PLN)", style = list(fontSize = "10px")) %>%
+  hc_tooltip(
+    useHTML = TRUE,
+    style = list(fontSize = "15px"),
+    headerFormat = "",
+    pointFormat = "<div style='text-align: center;'> <b>{point.name}</b><br>{point.y}</div>",
+    positioner = JS(
+      "function () {
+      
+        /* one of the most important parts! */
+        xp =  this.chart.chartWidth/2 - this.label.width/2
+        yp =  this.chart.chartHeight/2 - this.label.height/2
+      
+        return { x: xp, y: yp };
+      
+      }"),
+    shadow = FALSE,
+    borderWidth = 0,
+    backgroundColor = "transparent",
+    hideDelay = 1000
+    )
+```
+
+# Sumber Big Data
+
+## Column {.tabset .tabset-fade .colored}
+
+### Nighttime Light Intensity
+```{r include=FALSE}
+library(basemaps)
+var.map <- st_read("E:/GEOJSON/JOIN_ALL_VAR_PENYERTA.shp", quiet=TRUE)
+var.map %>% 
+  dplyr::select(idkec)
+var_map <- var.map %>% 
+  dplyr::select(nmkec)
+
+ntl <- round(var.map$ntl_median, 4)
+lst <- round(var.map$lst_median, 4)
+co <- round(var.map$co_median, 4)
+bui <- round(var.map$bui_median, 4)
+elev <- round(var.map$elevation_, 4)
+pm25 <- round(var.map$pm2.5_medi, 4)
+ai <- round(var.map$aridity_in, 4)
+rwi <- round(var.map$rwi_weight, 4)
+
+var_map <- var_map %>% 
+  add_column(ntl, lst, bui, co, elev, pm25, ai, rwi)
+```
+
+```{r}
+library(classInt)
+cols_classes_ntl <- classIntervals(var_map$ntl, n=5, style = "jenks")
+pal_ntl <- leaflet::colorBin(palette = "Greys",
+                          bins = cols_classes_ntl$brks,
+                          domain = var_map$ntl,
+                          na.color = "white",
+                          reverse = TRUE)
+tag.map.title <- tags$style(HTML("
+  .leaflet-control.map-title { 
+    transform: translate(-50%,20%);
+    position: fixed !important;
+    left: 50%;
+    text-align: center;
+    color: black;
+    padding-left: 0px; 
+    padding-right: 0px;
+    margin: 0 auto;
+    width: 80%;
+    background: rgba(255,255,255,0.75);
+    font-weight: bold;
+    font-size: 18px;
+  }
+"))
+title_ntl <- tags$div(
+  tag.map.title, HTML("Nighttime Light (NTL) Menurut Kecamatan di Provinsi Jawa Tengah 2021")
+)  
+
+leaflet(var_map) %>%
+  addTiles() %>% 
+  addPolygons(
+    color = ~pal_ntl(ntl),
+    weight = 2,
+    opacity = 1,
+    dashArray = "3",
+    stroke = FALSE, 
+    fillOpacity = 0.9,
+    smoothFactor = 0.5,
+    # color = "black",
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#2980B9",
+      dashArray = "",
+      fillOpacity = 0.5,
+      bringToFront = TRUE),
+    label = paste0("Kecamatan ", var_map$nmkec, ": ", var_map$ntl, " nanoWatts/sr/cm^2"),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+) %>%
+  addLegend(
+  position = "bottomright",
+  pal = pal_ntl,
+  values = ~ntl,
+  title = "Nighttime Light (NTL)<br>(nanoWatts/sr/cm^2)"
+) %>% addProviderTiles("Esri.WorldTerrain") %>% addControl(title_ntl, className="map-title")
+```
+
+### Land Surface Temperature
+```{r}
+cols_classes_lst <- classIntervals(var_map$lst, n=5, style = "jenks")
+pal_lst <- leaflet::colorBin(palette = "RdYlGn",
+                          bins = cols_classes_lst$brks,
+                          domain = var_map$lst,
+                          na.color = "white",
+                          reverse = TRUE)
+title_lst <- tags$div(
+  tag.map.title, HTML("Land Surface Temperature (LST) Menurut Kecamatan di Provinsi Jawa Tengah 2021")
+)  
+
+leaflet(var_map) %>%
+  addTiles() %>% 
+  addPolygons(
+    color = ~pal_lst(lst),
+    weight = 2,
+    opacity = 1,
+    dashArray = "3",
+    stroke = TRUE, 
+    fillOpacity = 0.9, 
+    smoothFactor = 0.5,
+    # color = "black",
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#2980B9",
+      dashArray = "",
+      fillOpacity = 0.5,
+      bringToFront = TRUE),
+    label = paste0("Kecamatan ", var_map$nmkec, ": ", var_map$lst, " derajat celsius"),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+) %>%
+  addLegend(
+  position = "bottomright",
+  pal = pal_lst,
+  values = ~lst,
+  title = "Land Surface Temperature (LST)<br>(derajat celsius)"
+) %>% addProviderTiles("Esri.WorldImagery") %>% addControl(title_lst, className="map-title")
+```
+
+### Build-Up Index
+```{r}
+cols_classes_bui <- classIntervals(var_map$bui, n=5, style = "jenks")
+pal_bui <- leaflet::colorBin(palette = "Blues",
+                          bins = cols_classes_bui$brks,
+                          domain = var_map$bui,
+                          na.color = "white",
+                          reverse = FALSE)
+title_bui <- tags$div(
+  tag.map.title, HTML("Build-Up Index (BUI) Menurut Kecamatan di Provinsi Jawa Tengah 2021")
+)  
+
+leaflet(var_map) %>%
+  addTiles() %>% 
+  addPolygons(
+    color = ~pal_bui(bui),
+    weight = 2,
+    opacity = 1,
+    dashArray = "3",
+    stroke = TRUE, 
+    fillOpacity = 0.9, 
+    smoothFactor = 0.5,
+    # color = "black",
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#2980B9",
+      dashArray = "",
+      fillOpacity = 0.5,
+      bringToFront = TRUE),
+    label = paste0("Kecamatan ", var_map$nmkec, ": ", var_map$bui),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+) %>%
+  addLegend(
+  position = "bottomright",
+  pal = pal_bui,
+  values = ~bui,
+  title = "Build-Up Index (BUI)"
+) %>% addProviderTiles("Esri.WorldImagery") %>% addControl(title_bui, className="map-title")
+```
+
+### Elevation
+```{r}
+cols_classes_elev <- classIntervals(var_map$elev, n=5, style = "jenks")
+pal_elev <- leaflet::colorBin(palette = "Oranges",
+                          bins = cols_classes_elev$brks,
+                          domain = var_map$elev,
+                          na.color = "white",
+                          reverse = FALSE)
+title_elev <- tags$div(
+  tag.map.title, HTML("Elevation (Ketinggian) Menurut Kecamatan di Provinsi Jawa Tengah 2000")
+)  
+
+leaflet(var_map) %>%
+  addTiles() %>% 
+  addPolygons(
+    color = ~pal_elev(elev),
+    weight = 2,
+    opacity = 1,
+    dashArray = "3",
+    stroke = TRUE, 
+    fillOpacity = 0.9, 
+    smoothFactor = 0.5,
+    # color = "black",
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#2980B9",
+      dashArray = "",
+      fillOpacity = 0.5,
+      bringToFront = TRUE),
+    label = paste0("Kecamatan ", var_map$nmkec, ": ", var_map$elev, " meter"),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+) %>%
+  addLegend(
+  position = "bottomright",
+  pal = pal_elev,
+  values = ~elev,
+  title = "Elevation (Meter)"
+) %>% addProviderTiles("Esri.WorldImagery") %>% addControl(title_elev, className="map-title")
+```
+
+### Kepadatan Senyawa CO
+```{r}
+cols_classes_co <- classIntervals(var_map$co, n=5, style = "jenks")
+
+pal_co <- leaflet::colorBin(palette = "OrRd",
+                          bins = cols_classes_co$brks,
+                          domain = var_map$co,
+                          na.color = "white",
+                          reverse = FALSE)
+title_co <- tags$div(
+  tag.map.title, HTML("Kepadatan Senyawa Karbon Monoksida (CO) Menurut Kecamatan di Provinsi Jawa Tengah 2021")
+)  
+
+leaflet(var_map) %>%
+  addTiles() %>% 
+  addPolygons(
+    color = ~pal_co(co),
+    weight = 2,
+    opacity = 1,
+    dashArray = "3",
+    stroke = TRUE, 
+    fillOpacity = 0.9, 
+    smoothFactor = 0.5,
+    # color = "black",
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#2980B9",
+      dashArray = "",
+      fillOpacity = 0.5,
+      bringToFront = TRUE),
+    label = paste0("Kecamatan ", var_map$nmkec, ": ", var_map$co, " mol/m^2"),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+) %>%
+  addLegend(
+  position = "bottomright",
+  pal = pal_co,
+  values = ~co,
+  title = "Kepadatan Senyawa CO (mol/m^2)"
+) %>% addProviderTiles("Esri.WorldImagery") %>% addControl(title_co, className="map-title")
+```
+
+### Konsentrasi Particulate Matter 2.5
+```{r}
+cols_classes_pm25 <- classIntervals(var_map$pm25, n=5, style = "jenks")
+pal_pm25 <- leaflet::colorBin(palette = "OrRd",
+                          bins = cols_classes_pm25$brks,
+                          domain = var_map$pm25,
+                          na.color = "white",
+                          reverse = FALSE)
+title_pm25 <- tags$div(
+  tag.map.title, HTML("Konsentrasi Particulate Matter 2.5 (PM2.5) Menurut Kecamatan di Provinsi Jawa Tengah 2021")
+)  
+
+leaflet(var_map) %>%
+  addTiles() %>% 
+  addPolygons(
+    color = ~pal_pm25(pm25),
+    weight = 2,
+    opacity = 1,
+    dashArray = "3",
+    stroke = TRUE, 
+    fillOpacity = 0.9, 
+    smoothFactor = 0.5,
+    # color = "black",
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#2980B9",
+      dashArray = "",
+      fillOpacity = 0.5,
+      bringToFront = TRUE),
+    label = paste0("Kecamatan ", var_map$nmkec, ": ", var_map$pm25, " μgram/m^3"),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+) %>%
+  addLegend(
+  position = "bottomright",
+  pal = pal_pm25,
+  values = ~pm25,
+  title = "Konsentrasi Particulate Matter 2.5<br>(μgram/m^3)"
+) %>% addProviderTiles("Esri.WorldImagery") %>% addControl(title_pm25, className="map-title")
+```
+
+
+### Aridity Index Value
+```{r}
+cols_classes_ai <- classIntervals(var_map$ai, n=5, style = "jenks")
+pal_ai <- leaflet::colorBin(palette = "RdYlGn",
+                          bins = cols_classes_ai$brks,
+                          domain = var_map$ai,
+                          na.color = "white",
+                          reverse = FALSE)
+title_ai <- tags$div(
+  tag.map.title, HTML("Aridity Index (AI) Menurut Kecamatan di Provinsi Jawa Tengah 1970-2000")
+)  
+
+leaflet(var_map) %>%
+  addTiles() %>% 
+  addPolygons(
+    color = ~pal_ai(ai),
+    weight = 2,
+    opacity = 1,
+    dashArray = "3",
+    stroke = TRUE, 
+    fillOpacity = 0.9, 
+    smoothFactor = 0.5,
+    # color = "black",
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#2980B9",
+      dashArray = "",
+      fillOpacity = 0.5,
+      bringToFront = TRUE),
+    label = paste0("Kecamatan ", var_map$nmkec, ": ", var_map$ai),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+) %>%
+  addLegend(
+  position = "bottomright",
+  pal = pal_ai,
+  values = ~ai,
+  title = "Aridity Index Value"
+) %>% addProviderTiles("Esri.WorldImagery") %>% addControl(title_ai, className="map-title")
+```
+
+### Relative Wealth Index
+```{r}
+cols_classes_rwi <- classIntervals(var_map$rwi, n=5, style = "jenks")
+pal_rwi <- leaflet::colorBin(palette = "Greens",
+                          bins = cols_classes_rwi$brks,
+                          domain = var_map$rwi,
+                          na.color = "white",
+                          reverse = FALSE)
+title_rwi <- tags$div(
+  tag.map.title, HTML("Relative Wealth Index (RWI) Menurut Kecamatan di Provinsi Jawa Tengah 2021")
+)  
+
+leaflet(var_map) %>%
+  addTiles() %>% 
+  addPolygons(
+    color = ~pal_rwi(rwi),
+    weight = 2,
+    opacity = 1,
+    dashArray = "3",
+    stroke = TRUE, 
+    fillOpacity = 0.9, 
+    smoothFactor = 0.5,
+    # color = "black",
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#2980B9",
+      dashArray = "",
+      fillOpacity = 0.5,
+      bringToFront = TRUE),
+    label = paste0("Kecamatan ", var_map$nmkec, ": ", var_map$rwi),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+) %>%
+  addLegend(
+  position = "bottomright",
+  pal = pal_rwi,
+  values = ~rwi,
+  title = "Relative Wealth Index (RWI)"
+) %>% addProviderTiles("Esri.WorldImagery") %>% addControl(title_rwi, className="map-title")
+```
+
+# Data Podes
+
+## Column {.tabset .tabset-fade .colored}
+
+### Jlh Keluarga Pengguna Listrik PLN
+```{r include=FALSE}
+library(basemaps)
+# var.map <- st_read("E:/GEOJSON/JOIN_ALL_VAR_PENYERTA.shp", quiet=TRUE)
+# var.map %>% 
+#   dplyr::select(idkec)
+# var_map <- var.map %>% 
+#   dplyr::select(nmkec)
+
+jlh_klg_listrik <- var.map$jlh_klg_li
+jlh_fas_pd <- var.map$jlh_fas_pd
+jlh_fas_ks <- var.map$jlh_fas_ks
+jlh_imk <- var.map$jlh_imk
+jlh_tmp_ibd <- var.map$jlh_tmpt_i
+jlh_sar_eko <- var.map$jlh_sarana
+jlh_sen_ind <- var.map$jlh_sentra
+pop_dens <- var.map$kepadatan_
+
+var_map <- var_map %>% 
+  add_column(jlh_klg_listrik, jlh_fas_pd, jlh_fas_ks, jlh_imk, jlh_tmp_ibd, jlh_sen_ind, jlh_sar_eko, pop_dens)
+```
+
+```{r}
+hchart(density(jlh_klg_listrik), type = "area", color = "steelblue", name = "Jumlah Keluarga Pelanggan Listrik PLN")
+```
+
+### Jlh Fasilitas Pendidikan
+```{r}
+hchart(density(jlh_fas_pd), type = "area", color = "lightgreen", name = "Jumlah Fasilitas Pendidikan")
+```
+
+### Jlh Fasilitas Kesehatan
+```{r}
+hchart(density(jlh_fas_ks), type = "area", color = "darkred", name = "Jumlah Fasilitas Kesehatan")
+```
+
+### Jlh Tempat Ibadah
+```{r}
+hchart(density(jlh_tmp_ibd), type = "area", color = "navy", name = "Jumlah Tempat Ibadah")
+```
+
+### Jlh Sarana Ekonomi
+```{r}
+hchart(density(jlh_sar_eko), type = "area", color = "orange", name = "Jumlah Sarana Ekonomi")
+```
+
+### Jlh Sentra Industri
+```{r}
+hchart(density(jlh_sen_ind), type = "area", color = "hotpink", name = "Jumlah Sentra Industri")
+```
+
+### Jlh IMK
+```{r}
+hchart(density(jlh_imk), type = "area", color = "darkkhaki", name = "Jumlah Industri Mikro & Kecil (IMK)")
+```
+
+### Kepadatan Penduduk
+```{r}
+hchart(density(pop_dens), type = "area", color = "goldenrod", name = "Kepadatan Penduduk")
+```
+
+# Hasil Estimasi
+
+## Column {.tabset .tabset-fade .colored data-width="500"}
+
+### Penduga Langsung {.no-padding}
+
+```{r}
+# Create tibble
+data7$KodeKec <- as.factor(data7$KodeKec)
+
+KEC_bar <- data7 %>%
+  dplyr::group_by(KodeKec) %>%
+  dplyr::arrange(desc(PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA))
+
+palet <- colorNumeric(
+  palette = "YlOrRd",
+  domain = KEC_bar$PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA
+)
+
+# Create interactive bar plot
+highchart() %>%
+    hc_add_series(KEC_bar, hcaes(x = NamaKec, y = PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA,
+                                  color = palet(PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA)), type = "bar")  %>% 
+    hc_tooltip(borderWidth = 1.5, 
+               pointFormat = paste("Konsumsi Listrik Perkapita: <b>{point.y}</b> KWh/Kapita")) %>%
+    hc_legend(enabled = FALSE) %>%
+    hc_title(text = "Hasil Estimasi Konsumsi Listrik Per Kapita Ruta Level Kecamatan 2021 <br>dengan Metode Pendugaan Langsung") %>% 
+    hc_subtitle(text = "(Sumber: Susenas Maret 2021)") %>%
+    hc_xAxis(categories = KEC_bar$NamaKec, 
+             labels = list(step = 1),
+             min = 0, max = 30,
+             scrollbar = list(enabled = TRUE)) %>%
+    hc_yAxis(title = list(text = "Konsumsi Listrik Perkapita (KWh/Kapita)")) %>%
+    hc_plotOptions(bar = list(stacking = "normal", 
+                              pointPadding = 0, groupPadding = 0, borderWidth = 0.5)) %>% 
+    hc_add_theme(custom_theme)
+```
+
+### Penduga EBLUP-FH {.no-padding}
+
+```{r}
+# Create tibble
+data8$KodeKec <- as.factor(data8$KodeKec)
+
+KEC_bar1 <- data8 %>%
+  dplyr::group_by(KodeKec) %>%
+  dplyr::arrange(desc(Penduga_EBLUP_FH))
+
+KEC_bar1$Penduga_EBLUP_FH <- round(KEC_bar1$Penduga_EBLUP_FH, 3)
+
+palet <- colorNumeric(
+  palette = "YlOrRd",
+  domain = KEC_bar1$Penduga_EBLUP_FH
+)
+
+# Create interactive bar plot
+highchart() %>%
+    hc_add_series(KEC_bar1, hcaes(x = NamaKec, y = Penduga_EBLUP_FH,
+                                  color = palet(Penduga_EBLUP_FH)), type = "bar")  %>% 
+    hc_tooltip(borderWidth = 1.5, 
+               pointFormat = paste("Konsumsi Listrik Perkapita: <b>{point.y}</b> KWh/Kapita")) %>%
+    hc_legend(enabled = FALSE) %>%
+    hc_title(text = "Hasil Estimasi Konsumsi Listrik Per Kapita Ruta Level Kecamatan 2021 <br> dengan Metode SAE Model EBLUP-FH") %>% 
+    hc_subtitle(text = "(Sumber: Susenas Maret 2021, Podes 2021, dan Sumber Big Data)") %>%
+    hc_xAxis(categories = KEC_bar1$NamaKec, 
+             labels = list(step = 1),
+             min = 0, max = 30,
+             scrollbar = list(enabled = TRUE)) %>%
+    hc_yAxis(title = list(text = "Konsumsi Listrik Perkapita (KWh/Kapita)")) %>%
+    hc_plotOptions(bar = list(stacking = "normal", 
+                              pointPadding = 0, groupPadding = 0, borderWidth = 0.5)) %>% 
+    hc_add_theme(custom_theme)
+```
+
+### Penduga SEBLUP-FH {.no-padding}
+
+```{r}
+# Create tibble
+data9$KodeKec <- as.factor(data9$KodeKec)
+
+KEC_bar2 <- data9 %>%
+  dplyr::group_by(KodeKec) %>%
+  dplyr::arrange(desc(Penduga_SEBLUP_FH))
+
+KEC_bar2$Penduga_SEBLUP_FH <- round(KEC_bar2$Penduga_SEBLUP_FH, 3)
+
+palet <- colorNumeric(
+  palette = "YlOrRd",
+  domain = KEC_bar2$Penduga_SEBLUP_FH
+)
+
+# Create interactive bar plot
+highchart() %>%
+    hc_add_series(KEC_bar2, hcaes(x = NamaKec, y = Penduga_SEBLUP_FH,
+                                  color = palet(Penduga_SEBLUP_FH)), type = "bar")  %>% 
+    hc_tooltip(borderWidth = 1.5, 
+               pointFormat = paste("Konsumsi Listrik Perkapita: <b>{point.y}</b> KWh/Kapita")) %>%
+    hc_legend(enabled = FALSE) %>%
+    hc_title(text = "Hasil Estimasi Konsumsi Listrik Per Kapita Ruta Level Kecamatan 2021 <br> dengan Metode SAE Model SEBLUP-FH") %>% 
+    hc_subtitle(text = "(Sumber: Susenas Maret 2021, Podes 2021, dan Sumber Big Data)") %>%
+    hc_xAxis(categories = KEC_bar2$NamaKec, 
+             labels = list(step = 1),
+             min = 0, max = 30,
+             scrollbar = list(enabled = TRUE)) %>%
+    hc_yAxis(title = list(text = "Konsumsi Listrik Perkapita (KWh/Kapita)")) %>%
+    hc_plotOptions(bar = list(stacking = "normal", 
+                              pointPadding = 0, groupPadding = 0, borderWidth = 0.5)) %>% 
+    hc_add_theme(custom_theme)
+```
+
+### Penduga HB Lognormal {.no-padding}
+
+```{r}
+# Create tibble
+data10$KodeKec <- as.factor(data10$KodeKec)
+
+KEC_bar3 <- data10 %>%
+  dplyr::group_by(KodeKec) %>%
+  dplyr::arrange(desc(PENDUGA_HB8))
+
+KEC_bar3$PENDUGA_HB8 <- round(KEC_bar3$PENDUGA_HB8, 3)
+
+palet <- colorNumeric(
+  palette = "YlOrRd",
+  domain = KEC_bar3$PENDUGA_HB8
+)
+
+# Create interactive bar plot
+highchart() %>%
+    hc_add_series(KEC_bar3, hcaes(x = NamaKec, y = PENDUGA_HB8,
+                                  color = palet(PENDUGA_HB8)), type = "bar")  %>% 
+    hc_tooltip(borderWidth = 1.5, 
+               pointFormat = paste("Konsumsi Listrik Perkapita: <b>{point.y}</b> KWh/Kapita")) %>%
+    hc_legend(enabled = FALSE) %>%
+    hc_title(text = "Hasil Estimasi Konsumsi Listrik Per Kapita Ruta Level Kecamatan 2021 <br> dengan Metode SAE Model HB Lognormal") %>% 
+    hc_subtitle(text = "(Sumber: Susenas Maret 2021, Podes 2021, dan Sumber Big Data)") %>%
+    hc_xAxis(categories = KEC_bar3$NamaKec, 
+             labels = list(step = 1),
+             min = 0, max = 30,
+             scrollbar = list(enabled = TRUE)) %>%
+    hc_yAxis(title = list(text = "Konsumsi Listrik Perkapita (KWh/Kapita)")) %>%
+    hc_plotOptions(bar = list(stacking = "normal", 
+                              pointPadding = 0, groupPadding = 0, borderWidth = 0.5)) %>% 
+    hc_add_theme(custom_theme)
+```
+
+## Column {.tabset .tabset-fade .colored data-width="500"}
+
+### Penduga Langsung {.no-title .no-padding}
+
+<!-- ## Column {data-width="400"} -->
+
+```{r include=FALSE}
+# install.packages("basemaps")
+library(basemaps)
+jateng.map <- st_read("E:/GEOJSON/JOIN_NEW_ALL_DATA.shp", quiet=TRUE)
+# indo_map <- st_read("E:/GEOJSON/idn_admbnda_adm1_bps_20200401.shp")
+jateng.map %>% 
+  dplyr::select(idkec)
+jateng_map <- jateng.map %>% 
+  dplyr::select(nmkec)
+
+penduga_lgsg <- jateng.map$LISTRIK
+penduga_eblup <- jateng.map$Pend_EBLUP
+penduga_seblup <- jateng.map$Pend_SEBLU
+penduga_hb <- jateng.map$Pend_HB8
+jateng_map <- jateng_map %>% 
+  add_column(penduga_lgsg, penduga_eblup, penduga_seblup, penduga_hb)
+
+# pal <- colorNumeric(
+#   palette = "YlOrRd",
+#   domain = jateng_map$penduga_lgsg
+# )
+```
+
+```{r}
+library(classInt)
+library(sf)
+cols_classes <- classIntervals(jateng_map$penduga_lgsg, n=5, style = "jenks")
+pal <- leaflet::colorBin(palette = "YlOrRd",
+                          bins = cols_classes$brks,
+                          domain = jateng_map$penduga_lgsg,
+                          na.color = "white")
+
+leaflet(jateng_map) %>%
+  addTiles() %>% 
+  addPolygons(
+    color = ~pal(penduga_lgsg),
+    weight = 2,
+    opacity = 1,
+    dashArray = "3",
+    stroke = TRUE, 
+    fillOpacity = 0.9, 
+    smoothFactor = 0.5,
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#2980B9",
+      dashArray = "",
+      fillOpacity = 0.5,
+      bringToFront = TRUE),
+    label = paste0("Kecamatan ", jateng_map$nmkec, ": ", jateng_map$penduga_lgsg, " KWh/Kapita"),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+) %>%
+  addLegend(
+  position = "bottomright",
+  pal = pal,
+  values = ~penduga_lgsg,
+  title = "Penduga Langsung<br>(KWh/Kapita)"
+) %>% addProviderTiles("Esri.WorldStreetMap")
+```
+
+### Penduga EBLUP-FH {.no-title .no-padding}
+```{r}
+cols_classes1 <- classIntervals(jateng_map$penduga_eblup, n=5, style = "jenks")
+pal1 <- leaflet::colorBin(palette = "YlOrRd",
+                          bins = cols_classes1$brks,
+                          domain = jateng_map$penduga_eblup,
+                          na.color = "white")
+
+leaflet(jateng_map) %>%
+  addTiles() %>% 
+  addPolygons(
+    color = ~pal1(penduga_eblup),
+    weight = 2,
+    opacity = 1,
+    dashArray = "3",
+    stroke = TRUE, 
+    fillOpacity = 0.9, 
+    smoothFactor = 0.5,
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#2980B9",
+      dashArray = "",
+      fillOpacity = 0.5,
+      bringToFront = TRUE),
+    label = paste0("Kecamatan ", jateng_map$nmkec, ": ", jateng_map$penduga_eblup, " KWh/Kapita"),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+) %>%
+  addLegend(
+  position = "bottomright",
+  pal = pal1,
+  values = ~penduga_eblup,
+  title = "Penduga EBLUP-FH<br>(KWh/Kapita)"
+) %>% addProviderTiles("Esri.WorldStreetMap")
+```
+
+### Penduga SEBLUP-FH {.no-title .no-padding}
+```{r}
+cols_classes2 <- classIntervals(jateng_map$penduga_seblup, n=5, style = "jenks")
+# cols_classes <- c(8.5, 18, 25,3, 33, 43,6, 70,4)
+pal2 <- leaflet::colorBin(palette = "YlOrRd",
+                          bins = cols_classes2$brks,
+                          domain = jateng_map$penduga_seblup,
+                          na.color = "white")
+
+leaflet(jateng_map) %>%
+  addTiles() %>% 
+  addPolygons(
+    color = ~pal2(penduga_seblup),
+    weight = 2,
+    opacity = 1,
+    dashArray = "3",
+    stroke = TRUE, 
+    fillOpacity = 0.9, 
+    smoothFactor = 0.5,
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#2980B9",
+      dashArray = "",
+      fillOpacity = 0.5,
+      bringToFront = TRUE),
+    label = paste0("Kecamatan ", jateng_map$nmkec, ": ", jateng_map$penduga_seblup, " KWh/Kapita"),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+) %>%
+  addLegend(
+  position = "bottomright",
+  pal = pal2,
+  values = ~penduga_seblup,
+  title = "Penduga SEBLUP-FH<br>(KWh/Kapita)"
+) %>% addProviderTiles("Esri.WorldStreetMap")
+```
+
+### Penduga HB Lognormal {.no-title .no-padding}
+```{r}
+cols_classes3 <- classIntervals(jateng_map$penduga_hb, n=5, style = "jenks")
+# cols_classes <- c(8.5, 18, 25,3, 33, 43,6, 70,4)
+pal3 <- leaflet::colorBin(palette = "YlOrRd",
+                          bins = cols_classes3$brks,
+                          domain = jateng_map$penduga_hb,
+                          na.color = "white")
+
+leaflet(jateng_map) %>%
+  addTiles() %>% 
+  addPolygons(
+    color = ~pal3(penduga_eblup),
+    weight = 2,
+    opacity = 1,
+    dashArray = "3",
+    stroke = TRUE, 
+    fillOpacity = 0.9, 
+    smoothFactor = 0.5,
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#2980B9",
+      dashArray = "",
+      fillOpacity = 0.5,
+      bringToFront = TRUE),
+    label = paste0("Kecamatan ", jateng_map$nmkec, ": ", jateng_map$penduga_hb, " KWh/Kapita"),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")
+) %>%
+  addLegend(
+  position = "bottomright",
+  pal = pal3,
+  values = ~penduga_hb,
+  title = "Penduga HB Lognormal<br>(KWh/Kapita)"
+) %>% addProviderTiles("Esri.WorldStreetMap")
+```
+
+# Evaluasi Hasil Model
+
+## Column {.tabset .tabset-fade .colored data-width="500"}
+
+### Line Chart RSE/RRMSE {.no-padding}
+```{r}
+# create color category
+cat_color2 <- c("green", "orange", "brown", "skyblue")
+
+hchart(
+  data11, "line", color = cat_color2,
+  hcaes(x = No, y = RSE, group = Model_Pendugaan)
+  ) %>% 
+  hc_title(text = "Multiple Line Chart: Nilai RSE atau RRMSE dari Empat Model Pendugaan") %>% 
+  hc_subtitle(text = "Tanpa Melibatkan Amatan dengan Nilai SE=0") %>%
+  hc_xAxis(title = list(text = "Nomor Kecamatan")) %>%
+  hc_yAxis(title = list(text = "RSE atau RRMSE (%)"), allowDecimals = FALSE)  %>%
+  hc_add_theme(custom_theme)
+```
+
+### Box Plot RSE/RRMSE {.no-padding}
+```{r}
+# Create the chart
+suppressWarnings(
+    hcboxplot(
+    x = data11$RSE,
+    var = data11$Model_Pendugaan,
+    name = "RSE atau RRMSE",
+    color = "#2980b9",
+    outliers = TRUE
+    ) %>%
+    hc_chart(type = "column") %>%
+    hc_title(text = "Multiple Box Plot: Nilai RSE atau RRMSE dari Empat Model Pendugaan") %>%
+    hc_subtitle(text = "Tanpa Melibatkan Amatan dengan Nilai SE=0") %>%
+    hc_yAxis(title = list(text = "RSE atau RRMSE (%)")) %>%
+    hc_add_series(
+      data = data11,
+      type = "scatter",
+      hcaes(x = "Model_Pendugaan", y = "RSE", group = "Model_Pendugaan")
+    ) %>%
+    hc_plotOptions(scatter = list(
+      color = "red",
+      marker = list(
+        radius = 2,
+        symbol = "circle",
+        lineWidth = 1
+      )
+    ))  %>%
+    hc_plotOptions(scatter = list(jitter = list(x = .1, y = 0)))
+)
+```
+
+### Line Chart MSE {.no-padding}
+```{r}
+# Read in data 11
+data_mse <- data11[-c(1:565),]
+
+cat_color3 <- c("green", "orange", "skyblue")
+
+hchart(
+  data_mse, "line", color = cat_color3,
+  hcaes(x = No, y = MSE, group = Model_Pendugaan)
+  ) %>% 
+  hc_title(text = "Multiple Line Chart: Nilai MSE dari Tiga Model SAE") %>% 
+  hc_subtitle(text = "Tanpa Melibatkan Amatan dengan Nilai SE=0") %>%
+  hc_xAxis(title = list(text = "Nomor Kecamatan")) %>%
+  hc_yAxis(title = list(text = "Mean Squared Error (MSE)"), allowDecimals = FALSE)  %>%
+  hc_add_theme(custom_theme)
+```
+
+### Box Plot MSE {.no-padding}
+```{r}
+# Create the chart
+suppressWarnings(
+    hcboxplot(
+    x = data_mse$MSE,
+    var = data_mse$Model_Pendugaan,
+    name = "MSE",
+    color = "#2980b9",
+    outliers = TRUE
+    ) %>%
+    hc_chart(type = "column") %>%
+    hc_title(text = "Multiple Box Plot: Nilai MSE dari Tiga Model SAE") %>%
+    hc_subtitle(text = "Tanpa Melibatkan Amatan dengan Nilai SE=0") %>%
+    hc_yAxis(title = list(text = "Mean Squared Error MSE)")) %>%
+    hc_add_series(
+      data = data_mse,
+      type = "scatter",
+      hcaes(x = "Model_Pendugaan", y = "MSE", group = "Model_Pendugaan")
+    ) %>%
+    hc_plotOptions(scatter = list(
+      color = "red",
+      marker = list(
+        radius = 2,
+        symbol = "circle",
+        lineWidth = 1
+      )
+    ))  %>%
+    hc_plotOptions(scatter = list(jitter = list(x = .1, y = 0)))
+)
+```
+
+## Column {.tabset .tabset-fade .colored data-width="500"}
+
+### Direct vs Data PLN {.no-title .no-padding}
+```{r}
+# Read in data 12
+data12 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 12)
+
+# Fit regression model
+model1 <- lm(DATA_PLN ~ PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA, data = data12)
+fit1 <- augment(model1) %>% arrange(PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA)
+
+# Visualization
+data12 %>% 
+  hchart('scatter', hcaes(x = PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA, y = DATA_PLN)) %>%
+  hc_add_series(
+    fit1, type = "line", hcaes(x = PENDUGA_LANGSUNG_RATA_LISTRIK_KAPITA, y = .fitted),
+    name = "KONSUMSI LISTRIK PER KAPITA (KWH/KAPITA)", id = "fit1", color = "black") %>% 
+  hc_title(text = "Scatter Plot: Penduga Langsung vs Data PLN") %>% 
+  hc_subtitle(text = "Korelasi Kendall-Tau: 0.278") %>%
+  hc_xAxis(title = list(text = "KWh/Kapita Penduga Langsung")) %>%
+  hc_yAxis(title = list(text = "KWh/Kapita Data PLN"), allowDecimals = FALSE) %>%
+  hc_add_theme(custom_theme)
+```
+
+### EBLUP vs Data PLN {.no-title .no-padding}
+```{r}
+# Read in data 12
+data12 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 12)
+
+# Fit regression model
+model2 <- lm(DATA_PLN ~ PENDUGA_EBLUP_FH, data = data12)
+fit2 <- augment(model2) %>% arrange(PENDUGA_EBLUP_FH)
+
+# Visualization
+data12 %>% 
+  hchart('scatter', hcaes(x = PENDUGA_EBLUP_FH, y = DATA_PLN)) %>%
+  hc_add_series(
+    fit2, type = "line", hcaes(x = PENDUGA_EBLUP_FH, y = .fitted),
+    name = "KONSUMSI LISTRIK PER KAPITA (KWH/KAPITA)", id = "fit2", color = "black") %>% 
+  hc_title(text = "Scatter Plot: Penduga EBLUP-FH vs Data PLN") %>% 
+  hc_subtitle(text = "Korelasi Kendall-Tau: 0.296") %>%
+  hc_xAxis(title = list(text = "KWh/Kapita Penduga EBLUP-FH")) %>%
+  hc_yAxis(title = list(text = "KWh/Kapita Data PLN"), allowDecimals = FALSE) %>%
+  hc_add_theme(custom_theme)
+```
+
+### SEBLUP vs Data PLN {.no-title .no-padding}
+```{r}
+# Read in data 12
+data12 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 12)
+
+# Fit regression model
+model3 <- lm(DATA_PLN ~ PENDUGA_SEBLUP_FH, data = data12)
+fit3 <- augment(model3) %>% arrange(PENDUGA_SEBLUP_FH)
+
+# Visualization
+data12 %>% 
+  hchart('scatter', hcaes(x = PENDUGA_SEBLUP_FH, y = DATA_PLN)) %>%
+  hc_add_series(
+    fit3, type = "line", hcaes(x = PENDUGA_SEBLUP_FH, y = .fitted),
+    name = "KONSUMSI LISTRIK PER KAPITA (KWH/KAPITA)", id = "fit3", color = "black") %>% 
+  hc_title(text = "Scatter Plot: Penduga SEBLUP-FH vs Data PLN") %>% 
+  hc_subtitle(text = "Korelasi Kendall-Tau: 0.298") %>%
+  hc_xAxis(title = list(text = "KWh/Kapita Penduga SEBLUP-FH")) %>%
+  hc_yAxis(title = list(text = "KWh/Kapita Data PLN"), allowDecimals = FALSE) %>%
+  hc_add_theme(custom_theme)
+```
+
+### HB Lognormal vs Data PLN {.no-title .no-padding}
+```{r}
+# Read in data 12
+data12 <- read_excel('E:/Dataset/DATA-HASIL-SKRIPSI.xlsx', sheet = 12)
+
+# Fit regression model
+model4 <- lm(DATA_PLN ~ PENDUGA_HB8, data = data12)
+fit4 <- augment(model4) %>% arrange(PENDUGA_HB8)
+
+# Visualization
+data12 %>% 
+  hchart('scatter', hcaes(x = PENDUGA_HB8, y = DATA_PLN)) %>%
+  hc_add_series(
+    fit4, type = "line", hcaes(x = PENDUGA_HB8, y = .fitted),
+    name = "KONSUMSI LISTRIK PER KAPITA (KWH/KAPITA)", id = "fit4", color = "black") %>% 
+  hc_title(text = "Scatter Plot: Penduga HB Lognormal vs Data PLN") %>% 
+  hc_subtitle(text = "Korelasi Kendall-Tau: 0.3") %>%
+  hc_xAxis(title = list(text = "KWh/Kapita Penduga HB Lognormal")) %>%
+  hc_yAxis(title = list(text = "KWh/Kapita Data PLN"), allowDecimals = FALSE) %>%
+  hc_add_theme(custom_theme)
+```
+
+# Referensi {data-icon="fa-info-circle"}
+
+## Column {data-width="600"}
+
+###  {.colored}
+
+**Metadata:**
+
+Untuk mengetahui lebih jelas mengenai data sektoral terkait indikator ketenagalistrikan, maka Anda dapat mengunjungi website Perusahaan Listrik Negara (PLN) dan Kementerian ESDM pada tautan berikut:
+
+-   <https://web.pln.co.id/stakeholder/laporan-statistik>
+-   <https://www.esdm.go.id/id/publikasi/statistik>
+
+<br>
+
+Jika Anda membutuhkan data terkait Susenas dan Podes, silakan dapat menggunakan layanan terpadu yang dimiliki oleh BPS dengan informasi lebih rinci dapat mengunjungi tautan berikut:
+
+-   <https://pst.bps.go.id/>
+
+<br>
+
+**Referensi lain:**<br>
+K. Shi et al., “Evaluating the Ability of NPP-VIIRS Nighttime Light Data to Estimate the Gross Domestic Product and the Electric Power Consumption of China at Multiple Scales: A Comparison with DMSP-OLS Data,” pp. 1705–1724, 2014, doi: 10.3390/rs6021705.<br>
+K. Faisal, A. Shaker, and S. Habbani, “Modelling the Relationship between the Gross 
+Domestic Product and Built-Up Area Using Remote Sensing and GIS Data: A Case Study 
+of Seven Major Cities in Canada,” ISPRS Int. J. Geo-Information, vol. 5, no. 3, p. 23, 
+2016. <br>
+A. Rajeshwari and N. D. Mani, “Estimation of land surface temperature of Dindigul 
+district using Landsat 8 data,” Int. J. Res. Eng. Technol., vol. 3, no. 5, pp. 122–126, 2014.<br>
+P. Luo, X. Zhang, J. Cheng, and Q. Sun, “Modeling population density using a new index 
+derived from multi-sensor image data,” Remote Sens., vol. 11, no. 22, p. 2620, 2019.<br>
+N. M. Katsoulakos and D. C. Kaliampakos, “What is the impact of altitude on energy 
+demand? A step towards developing specialized energy policy for mountainous areas,”
+Energy Policy, vol. 71, pp. 130–138, 2014, doi: 10.1016/j.enpol.2014.04.003.<br>
+J. Eom, M. Hyun, J. Lee, and H. Lee, “Increase in household energy consumption due to 
+ambient air pollution,” Nat. Energy, vol. 5, no. 12, pp. 976–984, 2020, doi: 
+10.1038/s41560-020-00698-1.<br>
+R. J. Zomer, J. Xu, and A. Trabucco, “Version 3 of the global aridity index and potential 
+evapotranspiration database,” Sci. Data, vol. 9, no. 1, p. 409, 2022.<br>
+G. Chi, H. Fang, S. Chatterjee, and J. E. Blumenstock, “Microestimates of wealth for all 
+low- and middle-income countries,” Proc. Natl. Acad. Sci. U. S. A., vol. 119, no. 3, pp. 1–
+11, 2022, doi: 10.1073/pnas.2113658119.<br>
+
+
+
+## Column {data-width="400"}
+
+###  {.colored}
+
+**Acknowledgement:**
+
+Dashboard Informasi ini dibuat untuk keperluan sidang akhir skripsi KS 2023 di Politeknik Statistika STIS
+
+
+**Informasi Penulis:**
+
+-   Nama  : Raflizal Fikrar Odriansyah
+<br>
+-   NIM   : 221910812
+<br>
+-   Kelas : 4SD2
